@@ -1,0 +1,52 @@
+{
+  "skill_name": "cs2-city-assistant",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How is Pedoburg doing?",
+      "expected_output": "A status report on Pedoburg built from the 2025-07 00h snapshot, ignoring warm-up and abandoned data, judged against the journal's charter, with ranked recommendations and an updated journal.",
+      "files": [],
+      "expectations": [
+        "Uses the 2025-07 00h snapshot as the current state and reports population 794 (not 133 or another figure)",
+        "Does not treat the June 18h warm-up snapshot (population 133, industrial tax 0) as a real earlier state - no 'grew from 133 to 794' style claim",
+        "Does not present the abandoned (unsaved) July run as this save's history; if mentioned, it is clearly labelled as a separate unsaved run",
+        "States the monthly balance as a surplus of about +11,301 on income of about 145,338, with expenses treated as positive costs (about 134,037)",
+        "Reports milestone 2 as reached, with 2,727 total XP toward 4,800 for milestone 3",
+        "Refers to the city's charter from the journal (steady growth / loans only for planned investments / balanced)",
+        "Rates domains with fine/watch/problem-style statuses and marks traffic, public transport and environment as having no data, without inventing numbers for them",
+        "Respects the journal's pending decisions: does not recommend reversing the June tax cut or the new service budgets before their 2025-08 check",
+        "Updates the city journal (session note and/or decision outcomes)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Pedoburg just reached milestone 2, so I can build police and fire stations now. Can I afford them, or should I take a loan?",
+      "expected_output": "An affordability answer based on the current surplus (+11,301/month), cash and creditworthiness, framed by the charter (loans only for planned investments), without inventing building prices.",
+      "files": [],
+      "expectations": [
+        "Uses the current surplus of about +11,301 per month and cash of about 687,000 in the affordability reasoning",
+        "Mentions the borrowing limit (creditworthiness) of 250,000",
+        "Connects the loan question to the charter rule 'loans only for planned investments'",
+        "Does not state exact police or fire station prices or upkeep as facts from the data (marks them as estimates or asks the player to check the build menu)",
+        "Points out that the monthly margin is thin (about 7.8 %) and that new services' upkeep would push the balance toward or below zero",
+        "Takes the June decisions still pending in the journal (tax cut, garbage/healthcare budgets, hold until 2025-08) into account",
+        "Gives a clear recommendation rather than only listing options"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Take a look at my city Szirma and tell me what to fix first.",
+      "expected_output": "Recognises an empty sandbox city (unlimited money, all milestones, 0 population) from old-format files, does not rate finance, flags the water shortage, and creates a journal.",
+      "files": [],
+      "expectations": [
+        "Recognises that unlimited money is on and does not give deficit or tax advice as if money were limited",
+        "Recognises that the city has 0 population",
+        "Does not present the XP value -668,941 (or next required XP 0) as meaningful progress; recognises all milestones are reached",
+        "Flags the fresh-water shortage: only 548 of 1,100 consumption fulfilled",
+        "Mentions that electricity production is 0",
+        "Treats the data as provisional: a single after-load export from an early mod version with no history, and does not present 'gameDate 2025-01-08' as a reliable in-game date without caveat",
+        "Creates a journal for Szirma"
+      ]
+    }
+  ]
+}

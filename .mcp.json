@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "city-assistant": {
+      "command": "D:\\ClaudeApp\\CS2\\CityAssistantMCP\\.venv\\Scripts\\python.exe",
+      "args": ["D:\\ClaudeApp\\CS2\\CityAssistantMCP\\server.py"]
+    }
+  }
+}

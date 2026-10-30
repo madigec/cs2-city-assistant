@@ -1,0 +1,18 @@
+# Decompiled game code: the game's makers' property, only for local reference
+GameCode-1.6.1f1/
+
+# Build output and caches
+**/bin/
+**/obj/
+CityAssistant/Library/
+CityAssistantMCP/.venv/
+__pycache__/
+*.pyc
+
+# Local Claude Code state
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Skill evaluation scratch output
+cs2-city-assistant-workspace/
+skill-tests/
