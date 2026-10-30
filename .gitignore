@@ -16,3 +16,7 @@ __pycache__/
 # Skill evaluation scratch output
 cs2-city-assistant-workspace/
 skill-tests/
+
+# Private planning files (only on this PC)
+Ideas and planning.txt
+Coverage table.md
