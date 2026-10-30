@@ -8,11 +8,13 @@ The priorities every recommendation is judged against. Change them any time; not
 
 | Question | Current choice | Since |
 |---|---|---|
-| Financial risk | Loans for planned investments only | <game month> |
-| Growth pace | Steady | <game month> |
-| Citizens vs. cost | Balanced | <game month> |
-| Layout style | Open question | - |
-| Tie-breaker | Domain order: Finance, Growth, Economy, Services, Utilities, Traffic, Transport, Environment, Citizens, Progression | <game month> |
+| Financial risk | <player's answer> | <game month> |
+| Growth pace | <player's answer> | <game month> |
+| Citizens vs. cost | <player's answer> | <game month> |
+| Layout style | <player's answer> | <game month> |
+| Tie-breaker | <player's answer, default: Domain order: Finance, Growth, Economy, Services, Utilities, Traffic, Transport, Environment, Citizens, Progression> | <game month> |
+
+Filled in from the charter interview (see the skill's "The charter interview"). A choice the player skipped reads "not asked yet".
 
 ## Decision log
 

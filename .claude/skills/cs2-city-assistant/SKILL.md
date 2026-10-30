@@ -68,7 +68,7 @@ Before interpreting any number, read `references/data-reference.md`. It lists un
 
 Every session runs the same loop, so advice builds on itself instead of repeating:
 
-1. **Read the journal first** (`journal.md` in the city folder). It holds the charter (the player's priorities), past decisions and what they were expected to do, ongoing plans, and lessons. If there is no journal yet, create one from `assets/journal-template.md` (starting charter included) and tell the player you did.
+1. **Read the journal first** (`journal.md` in the city folder). It holds the charter (the player's priorities), past decisions and what they were expected to do, ongoing plans, and lessons. If there is no journal yet, this is a new city: run **the charter interview** (below) before any advice, then create the journal from `assets/journal-template.md` with the player's answers and tell them you did. If the journal's charter still says "template default", "not confirmed" or "not asked yet" (and the journal does not mark the city as a test city), offer the interview for those rows at the start of the session.
 2. **Read the overview** (`overview.json`) and note `gameMonth`, `trigger` and anything odd (`"error"` sections, `unlimitedMoney: true`, a `load` export, an old file format - see data-reference section 8). **If it is the same export the journal's last session already covered**, say so in the first line and don't repeat the full report: answer the player's actual question, mention anything genuinely new you notice, and tell them how to get fresh data: with the `city-assistant` tools and the game open, ask for live data; otherwise play on to the next snapshot (every 6 game hours).
 3. **Rate each domain** fine / watch / problem using `references/thresholds.md`. Only rate domains the data actually covers; mark the rest "no data yet".
 4. **Drill down** only where it pays: read `finance.json` whenever Finance is watch or problem, or the user asked about money (and always on the first session for a city). Use `references/finance.md` for the diagnosis. Each other domain has its own file (list above); read the files of the domains you are rating, and always `growth.json` and `wellbeing.json` when demand or happiness is the question, because their factor lists are the game's own explanation of what holds the city back. Older exports may lack some files: rate those domains "no data yet". All files are verified against the game panels (data-reference sections 4-6 give the units and the few fields still unverified); when a conclusion rests on an unverified field, say it is provisional.
@@ -76,6 +76,20 @@ Every session runs the same loop, so advice builds on itself instead of repeatin
 6. **Review past decisions**: for each journal decision whose check date has arrived, compare the expected effect with what the data shows and record the outcome.
 7. **Write the report** (format below).
 8. **Update the journal**: append new decisions the player accepts, outcomes of reviewed decisions, and any lesson learned. If you can write files, edit `journal.md` directly and say so; if not, give the player the exact text to paste.
+
+## The charter interview
+
+A new city starts with a short interview, so every later recommendation follows the player's own style instead of a guess. Ask the questions together in one message (or with a multiple-choice question tool if you have one), each with these options and a one-line meaning, and let the player answer in a few words:
+
+| Question | Options |
+|---|---|
+| Financial risk: how do you feel about loans? | No loans / Loans for planned investments only / Loans freely to grow faster |
+| Growth pace | Slow and safe / Steady / As fast as the money allows |
+| Citizens vs. cost: when they clash? | Citizens first (happiness, services) / Balanced / Lean budget first |
+| Layout style | Efficient grid / Organic and scenic / Mixed / Decide later |
+| Tie-breaker: what matters most when goals clash? | Keep the default domain order (Finance first) / Name your own top priority |
+
+Write the answers into the charter with the current game month (or "before founding" if no city data exists yet). A skipped question reads "not asked yet"; never fill in a default the player did not choose. Skip the interview for a city the journal marks as a test city. The player can change any answer later: update the row and its date, and note the change in the session notes.
 
 ## Judging against the charter
 
