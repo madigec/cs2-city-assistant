@@ -23,6 +23,7 @@ from typing import Any
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
+import journal
 import maps
 import networks
 import plans
@@ -49,7 +50,8 @@ mcp = MCPServer(
         "read-only except the co-pilot pair propose_change / apply_change (taxes incl. per product, service "
         "budgets, fees, loan, city policies): "
         "propose, show the player 'from -> to' with reason and expected effect, and call apply_change only after "
-        "the player's explicit yes to that one change. Never chain changes on one approval. "
+        "the player's explicit yes to that one change. Never chain changes on one approval. The city journal "
+        "(read_journal, create_journal, add_to_journal, edit_journal, archive_journal) is Claude's memory per city. "
         "Start with game_status (is the game open, which city, game date). get_city_data gives live numbers "
         "while that city is open, else the latest export. Use get_history for trends instead of opening "
         "snapshots one by one. Field meanings and units: the cs2-city-assistant skill's data-reference.md. "
@@ -249,14 +251,99 @@ def get_history(domain: str, fields: list[str], hour: str = "00h", last_months: 
     return {"city": city, "domain": domain, "hour": hour, "rows": rows, "warmUpSnapshotsLeftOut": skipped}
 
 
+def _journal_path(city: str, must_exist: bool = True) -> tuple[str, Path]:
+    """(city name, journal path). A city the mod has not exported yet (charter interview before founding) gets
+    the folder name the mod will use."""
+    try:
+        city = _resolve_city(city)
+    except ToolError:
+        if must_exist or not city:
+            raise
+    return city, _cities_dir() / journal.safe_folder_name(city) / "journal.md"
+
+
+def _current_game_month() -> str:
+    status = _live("/status")
+    if status and status.get("cityOpen") and status.get("gameMonth"):
+        return status["gameMonth"]
+    return ""
+
+
 @mcp.tool()
-def read_journal(city: str = "") -> dict[str, Any]:
-    """The city journal (charter, decisions, plans, lessons, session notes) as markdown."""
-    city = _resolve_city(city)
-    path = _cities_dir() / city / "journal.md"
+def read_journal(city: str = "", include_archive: bool = False) -> dict[str, Any]:
+    """The city journal (charter, decisions, plans, lessons, session notes) as markdown. include_archive also
+    returns journal-archive.md (old finished decisions and session notes); read it only when the past matters."""
+    city, path = _journal_path(city)
     if not path.exists():
-        return {"city": city, "journal": None, "note": "No journal yet; create one from the skill's journal template."}
-    return {"city": city, "journal": path.read_text(encoding="utf-8")}
+        return {"city": city, "journal": None,
+                "note": "No journal yet: this is a new city. Run the charter interview, then create_journal."}
+    result = {"city": city, "journal": path.read_text(encoding="utf-8"), "lines": len(path.read_text(encoding="utf-8").splitlines())}
+    archive = path.with_name("journal-archive.md")
+    if include_archive and archive.exists():
+        result["archive"] = archive.read_text(encoding="utf-8")
+    elif archive.exists():
+        result["archiveExists"] = True
+    return result
+
+
+@mcp.tool()
+def create_journal(city: str, financial_risk: str = "", growth_pace: str = "", citizens_vs_cost: str = "",
+                   layout_style: str = "", tie_breaker: str = "") -> dict[str, Any]:
+    """Start the journal of a NEW city with the player's charter-interview answers (empty = 'not asked yet';
+    tie_breaker 'default' = the standard domain order). Works before the mod has exported the city."""
+    city, path = _journal_path(city, must_exist=False)
+    month = _current_game_month() or "before founding"
+    try:
+        journal.create(path, city, month, {"Financial risk": financial_risk, "Growth pace": growth_pace,
+                                           "Citizens vs. cost": citizens_vs_cost, "Layout style": layout_style,
+                                           "Tie-breaker": tie_breaker})
+    except ValueError as e:
+        raise ToolError(str(e))
+    return {"city": city, "created": str(path), "journal": path.read_text(encoding="utf-8")}
+
+
+@mcp.tool()
+def add_to_journal(section: str, text: str, city: str = "") -> dict[str, Any]:
+    """Add one entry at the top of a journal section: 'Session notes', 'Lessons' or 'Plans' (text = the bullet,
+    e.g. '**2031-04 00h, session 3.** ...'), or 'Decision log' (text = a table row
+    '| Game month | Decision | Reason | Expected effect | Check in | Outcome |', Outcome empty until checked).
+    Co-pilot changes add their own decision row; don't add it twice."""
+    city, path = _journal_path(city)
+    try:
+        journal.add_entry(path, section, text)
+    except ValueError as e:
+        raise ToolError(str(e))
+    return {"city": city, "added": section, "journalLines": len(path.read_text(encoding="utf-8").splitlines()),
+            "undo": "journal.previous.md holds the version before this change"}
+
+
+@mcp.tool()
+def edit_journal(old_text: str, new_text: str, city: str = "") -> dict[str, Any]:
+    """Change one exact piece of the journal: a charter row, a decision's empty Outcome cell (quote the whole
+    row), a finished plan. old_text must appear exactly once."""
+    city, path = _journal_path(city)
+    try:
+        journal.edit(path, old_text, new_text)
+    except ValueError as e:
+        raise ToolError(str(e))
+    return {"city": city, "edited": True, "undo": "journal.previous.md holds the version before this change"}
+
+
+@mcp.tool()
+def archive_journal(city: str = "", older_than_months: int = 12, keep_session_notes: int = 10) -> dict[str, Any]:
+    """Keep the journal short: move finished decisions (Outcome filled, not "Pending") older than `older_than_months` game
+    months and all but the newest `keep_session_notes` session notes into journal-archive.md. Charter, open
+    decisions, plans and lessons stay. Use at a new in-game year or when the journal passes ~300 lines."""
+    city, path = _journal_path(city)
+    month = _current_game_month()
+    if not month:
+        overview = _cities_dir() / journal.safe_folder_name(city) / "overview.json"
+        month = _read_json(overview).get("gameMonth", "") if overview.exists() else ""
+    try:
+        moved = journal.archive(path, month, older_than_months, keep_session_notes)
+    except ValueError as e:
+        raise ToolError(str(e))
+    return {"city": city, "gameMonth": month, **moved, "journalLines": len(path.read_text(encoding="utf-8").splitlines())}
 
 
 # ---------- maps (Phase 4) ----------
@@ -492,25 +579,13 @@ def _fmt(value: Any, unit: str) -> str:
     return f"{int(round(value)):,}"
 
 
-def _cell(text: str) -> str:
-    return " ".join(str(text).split()).replace("|", "/")
-
-
 def _journal_decision(city: str, row: list[str]) -> str:
-    """Put one row at the top of the journal's decision log (creating the journal or the table if needed)."""
-    path = _cities_dir() / city / "journal.md"
-    header = "| Game month | Decision | Reason | Expected effect | Check in | Outcome |"
-    line = "| " + " | ".join(_cell(c) for c in row) + " |"
-    text = path.read_text(encoding="utf-8") if path.exists() else f"# {city} - City journal\n"
-    lines = text.splitlines()
-    try:
-        start = next(i for i, ln in enumerate(lines) if ln.strip().lower() == "## decision log")
-        sep = next(i for i in range(start, len(lines)) if lines[i].startswith("|---") or lines[i].startswith("| ---"))
-        lines.insert(sep + 1, line)
-    except StopIteration:
-        lines += ["", "## Decision log", "", header, "|---|---|---|---|---|---|", line]
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    """Put one row at the top of the journal's decision log (a city without a journal gets one, charter
+    'not asked yet')."""
+    path = _cities_dir() / journal.safe_folder_name(city) / "journal.md"
+    if not path.exists():
+        journal.create(path, city, row[0], {})
+    journal.add_entry(path, "Decision log", journal.decision_row(*row))
     return str(path)
 
 
