@@ -9,6 +9,7 @@ What each exported field means, its unit, and how much it has been verified. "Ve
 4. utilities.json
 5. services.json
 6. Domain files: growth, economy, traffic, transport, environment, wellbeing
+6b. problems.json (warning icons)
 7. Known quirks
 8. Older file formats
 
@@ -86,9 +87,11 @@ All money values are **per in-game month** and match the Economy panel's budget 
 
 Also verified on Mega City (2030-08 18h, all four Economy tabs, exact): `loan.creditworthiness` = the Loans tab's "Limit"; `taxes.byZone` and the tax `income` lines = the Taxation tab's rates and estimates. The **Services tab shows each service's net** = its fee income - its `estimatedUpkeep` (+ `ExportElectricity` for Electricity; e.g. Education 24,165,450 - 27,368,562 = -3,203,112), and its "monthly balance" is the sum of those nets, not the city's balance. If the player quotes a service figure from that tab, compare it with the net, not the upkeep.
 
+**How the game computes the income lines** (source: game code, `CityServiceBudgetSystem`, `TaxSystem.GetEstimated*TaxIncome`, `BudgetApplySystem`, 1.6.1f1): each tax line = tax rate x the city's "taxable income" statistic for that zone (and product or education level); each fee line = fee x the amount used. The game calls these "estimates", but they are exactly what is paid into the city's cash, in small steps through the day - so treat them as real income. Two consequences: (1) right after a tax or fee change the income line jumps at once, because only the rate changed in the formula; how households and companies react (moving away, using less, demand) shows only over the next months, so judge a change by the next month's numbers, not by the jump. (2) The Taxation tab's **"tax effect" is always 0** in this game version (`TaxSystem.GetTaxRateEffect` returns 0); it is not exported and means nothing.
+
 `moneyDelta` is the balance paid out in 24 steps per month (`balance` = 24 x `moneyDelta`); use `balance`.
 
-Not exported yet: tax rates per product (commercial/industrial/office resources), building prices and per-building upkeep, which buildings exist, district figures, loan term. See `finance.md` for how to estimate building costs from the city's own data.
+Not exported yet: building prices and per-building upkeep, which buildings exist, district figures, loan term. See `finance.md` for how to estimate building costs from the city's own data.
 
 ## 4. utilities.json
 
@@ -131,7 +134,7 @@ What the public-service info view panels show, one section per panel, plus `buil
 - **fireAndRescue**: only the `averageFireHazard` gauge (0-100 = %).
 - **education**: per level (elementary, highSchool, college, university): `...Students` (the number next to the person icon), `...Eligible`, `...Capacity`, gauge; `educationData.values` = citizens by education level [uneducated, poorly, educated, well, highly] (the "education distribution", as counts). Exact (eligible can differ by 1). Students above capacity or availability below 0 = not enough school places.
 - **post**: `mailProductionRate` = the panel's "mail rate" per month; the panel's "processing" = `collectedMail` + `deliveredMail` (verified: 630,156 + 630,156 = 1,260,312 shown). Mail rate above processing = mail piling up. Mega City's very first (warm-up) export showed all 0; settled snapshots are fine.
-- **telecom**: **always 0 / 0 of 0 - ignore it.** The game never computes this panel value (source: game code, `TelecomInfoviewUISystem.PerformUpdate` is empty in 1.6.1f1; confirmed in game: the Telecom panel shows only a map legend, no numbers). Judge internet service from the `Telecom` happiness factor in wellbeing.json instead.
+- **telecom**: **always 0 / 0 of 0 - ignore it; judge internet with `map_hotspots("telecom")` instead** (its `summary` gives the share of households below the game's happiness baseline, the hotspots the worst-served places; `get_map("telecom")` draws it). That layer reads the game's telecom coverage map, the same one citizen happiness uses (source: game code, `TelecomCoverage.SampleNetworkQuality`, `CitizenHappinessSystem.GetTelecomBonuses`; added 2026-10-31; checked on Mega City 2030-10: the map matched the game's Telecom view (even mid-to-good quality across the city), and the computed average internet happiness of +2.7 matched the game's `Telecom` happiness factor of +2, so the code-default baseline 0.3 and bonus/penalty seem right; older map exports lack the layer). The `Telecom` happiness factor in wellbeing.json is the second check. Why the panel value is 0: the game never computes it (source: game code, `TelecomInfoviewUISystem.PerformUpdate` is empty in 1.6.1f1; confirmed in game: the Telecom panel shows only a map legend, no numbers).
 - **disasterShelters**: `shelteredCount` ("sheltered citizens"), `shelterCapacity`, gauge `shelterAvailability` (free places of capacity = the panel's %). Exact.
 - The upkeep cost of each category is in `finance.json` `serviceBudgets`, not here.
 
@@ -166,9 +169,20 @@ Added 2026-10-29, one file per remaining domain of the design plan. Each is read
   - `happiness`: `averageHappiness.key` (the word the panel shows: e.g. "Happy") and `happinessFactors` (`{factor, weight}` like wellbeing.json; the district panel does not show these factors - they come from the same game section but are not visible to the player).
   - `employees`: `employeeCount` of `maxEmployees` (the panel's "employees" = workers / workplaces of companies in the district), split by education in `educationDataEmployees` / `educationDataWorkplaces` (same order as economy.json, 6th value = open positions).
   - `localServices`: list of the service building types inside the district (e.g. `Crematorium01`), the panel's "local services".
-  - `policies`: list of `{policy, active}` - the district policies the panel offers (the icon row) and whether each is on.
+  - `policies`: list of `{policy, active}` - the district policies the panel offers (the icon row) and whether each is on. Two district effects are defined but never used by the simulation in this game version: **product consumption** and **building upkeep** (source: game code, `DistrictModifierType.ProductConsumption` / `BuildingUpkeep` are read nowhere, 1.6.1f1). Any part of a district policy that works through them does nothing; which in-game policies carry them is in the game's data files, not yet checked.
   - Company profitability is not in the district panel in this game version, so it is not exported. An empty `districts` list means the city has no districts. Per-district money (tax by district) is not exported.
   - Use it to say *where* a city-wide problem sits ("happiness 81 overall, but X district is only 'Content'"); compare a district with the city average.
+
+## 6b. problems.json (warning icons)
+
+Added 2026-10-31. **Checked in game** on Mega City (2030-10 01:05): 1,849 icons in 15 types, titles as the game shows them (e.g. "Not enough customers", "Garbage piling up", "Waiting for a hearse"); three reported places confirmed by the player's screenshots (accident icons at Walnut / Evergreen Street, a cluster of hearse and garbage icons at Elk / Sunnyside Street, garbage and ambulance icons at Linden / Sunnyside Street). Every warning icon the game draws over a building, road, line or vehicle, counted per icon type (source: game code - each icon is an entity with `Game.Notifications.Icon` and the notification prefab; the in-game title is the localization key `Notifications.TITLE[<type>]`, the same key the game's UI uses). Left out: tool previews while placing, icons being removed, and the marker and money-pop-up layers (not problems).
+
+- `problems.total` (icons shown), `buildingCount` (all buildings, for scale), `byPriority` (icons per priority level).
+- `problems.types[]`: `type` (the game's internal name), `title` (what the game shows), `description` (the game's own explanation), `priority` (Info < Problem < Warning < MajorProblem < Error < FatalProblem, the game's `IconPriority`; the highest among that type's icons), `count`, `hiddenCount` (icons the game keeps but does not draw), `positions` (base64, x and z per icon). Only types with at least one icon (shown or hidden) are listed.
+- `get_city_data("problems")` gives a digest instead of the raw file: per type also `percentOfBuildings`, `byDistrict` (top 5) and `worstPlaces` (up to 3 places in street names with the number of icons within 300 m). `map_hotspots("problems")` lists the places with most icons of any type, `get_map("problems")` draws them.
+- An icon can sit on a vehicle or road, not only a building: in Mega City the "On fire" icon was a crashed car burning at an accident, not a building. Say "fire" and where, not "building on fire", unless the place is clearly a building.
+- An icon is per building (or road, vehicle), not per household: 30 "high rent" icons can mean 30 apartment towers. One building can carry several icons of different types.
+- Known game quirks that affect counts: the "not enough educated workers" icon practically never appears (section 7); abandoned buildings show their own icon instead of most other problems.
 
 ## 7. Known quirks
 
@@ -181,6 +195,8 @@ Added 2026-10-29, one file per remaining domain of the design plan. Each is read
 - **Months can repeat.** After a reload the same month will be exported again when the game reaches it; the newer file replaces the abandoned one. A decision in the journal logged during an unsaved run may not exist in the save; ask the player before reviewing it.
 - **Water import cost is real imported water** (source: game code, `WaterTradeSystem.WaterTradeJob` and `CityServiceBudgetSystem`, version 1.6.1f1). `ImportWater` = fresh water flowing into the city's pipe network through an outside water connection x the game's water import price. It is not a fixed charge (an earlier guess of "always 10 % of use" was wrong). A city can import even when its own capacity is larger than its use - why that happens in a given city is not yet known, so report the cost and the imported amount (`utilities.json` `water.waterImport`, verified m³/month) without claiming a cause. Suspect a shortage only when `fulfilledFreshConsumption` < `freshConsumption`.
 - **Service budgets are categories, not buildings.** The export shows upkeep per service category (e.g. "Health & Deathcare" covers clinics, hospitals, cemeteries and crematoria; "Garbage Management" covers landfills, recycling and incinerators). A category's upkeep going from 0 to a number means *something* in that category was built, not which building. Never name a building type as fact ("you built a clinic"); say "something in Health & Deathcare" or ask the player.
+- **"Per month" counts are a sliding one-month window.** Births, deaths, moved in / moved away, crimes and passengers (the panels' "per month" figures) are the game's "daily" statistics: the sum of the last 32 samples, one every 8,192 frames = one in-game day = one month on the game calendar (source: game code, `CityStatisticsSystem`, 1.6.1f1; which statistics are "daily" is set in the game's data files, list from the code audit, not checked in game). So the label is right, but the window slides: it does not reset at the start of a month, and a snapshot at 18h covers the last 24 game hours, not "this month so far".
+- **"Not enough educated workers" icon almost never appears** (source: game code, `WorkProviderSystem.UpdateNotificationAndEfficiency`, 1.6.1f1). The game divides two whole numbers before comparing (free educated places / all educated places), which gives 0 unless every educated place is empty. So no icon does not mean no shortage: judge educated-worker shortages from economy.json `workplaces` (open positions per education level). The "not enough uneducated workers" icon works normally. Side effect: the +20 % chance of a company moving away that comes with that icon practically never applies (`CompanyUtils`).
 - **`"error"` sections.** If a section reads `{"error": "..."}`, the mod could not read it (usually after a game update). Report it as missing data; the rest of the file is still valid.
 
 ## 8. Older file formats

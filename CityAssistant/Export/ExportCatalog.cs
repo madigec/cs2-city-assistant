@@ -13,7 +13,7 @@ namespace CityAssistant.Export
         public static readonly string[] Names =
         {
             "overview", "finance", "services", "utilities", "growth", "economy",
-            "traffic", "transport", "environment", "wellbeing", "districts",
+            "traffic", "transport", "environment", "wellbeing", "districts", "problems",
         };
 
         /// <summary>Builds one export by name (one of <see cref="Names"/>), or returns null for an unknown name.</summary>
@@ -32,6 +32,7 @@ namespace CityAssistant.Export
                 case "environment": return DomainExports.Environment(g, world, trigger);
                 case "wellbeing": return DomainExports.Wellbeing(g, world, trigger);
                 case "districts": return DistrictsExport.Build(g, world, trigger);
+                case "problems": return ProblemsExport.Build(g, trigger);
                 default: return null;
             }
         }

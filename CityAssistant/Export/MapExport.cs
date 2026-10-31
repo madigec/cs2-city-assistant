@@ -78,6 +78,12 @@ namespace CityAssistant.Export
             grids.Add("wind", GameData.Safe("wind", () =>
                 ReadGrid(world.GetExistingSystemManaged<WindSystem>(), WindSystem.kTextureSize, c => new float[] { c.m_Wind.x, c.m_Wind.y },
                     "Wind per cell: channels x (towards east), z (towards north); the direction the wind blows to")));
+            // The Telecom info view has no numbers in this game version (TelecomInfoviewUISystem.PerformUpdate is
+            // empty), but the coverage map behind it is live and is what citizen happiness reads. 128 x 128 cells
+            // (TelecomCoverageSystem.OnCreate: CreateTextures(128)).
+            grids.Add("telecom", GameData.Safe("telecom", () =>
+                ReadGrid(world.GetExistingSystemManaged<TelecomCoverageSystem>(), 128, c => new float[] { c.m_SignalStrength, c.m_NetworkLoad },
+                    "Telecom per cell: channels signal strength, network load (both 0-255). Network quality = min(1, signal / (127.5 + load)) (TelecomCoverage.SampleNetworkQuality)")));
             grids.Add("surfaceWater", GameData.Safe("surfaceWater", () => SurfaceWater(world)));
             grids.Add("terrainHeight", GameData.Safe("terrainHeight", () => TerrainHeight(world)));
             o.Add("grids", grids);

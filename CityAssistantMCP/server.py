@@ -25,6 +25,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 import journal
 import maps
+import problems
 import networks
 import plans
 
@@ -39,7 +40,7 @@ DATA_DIR = Path(
 # Same order as the mod's ExportCatalog.
 DOMAINS = [
     "overview", "finance", "services", "utilities", "growth", "economy",
-    "traffic", "transport", "environment", "wellbeing", "districts",
+    "traffic", "transport", "environment", "wellbeing", "districts", "problems",
 ]
 HOURS = ["00h", "06h", "12h", "18h"]
 
@@ -186,10 +187,23 @@ def list_cities() -> list[dict[str, Any]]:
 @mcp.tool()
 def get_city_data(domain: str, city: str = "") -> dict[str, Any]:
     """Current numbers for one domain: overview, finance, services, utilities, growth, economy, traffic,
-    transport, environment, wellbeing or districts. Live from the game when that city is open in it
-    (trigger 'live'), otherwise the latest exported file. 'city' defaults to the city open in the game."""
+    transport, environment, wellbeing, districts or problems (the game's warning icons: count per icon type,
+    the districts with most of them and the worst places in street names). Live from the game when that
+    city is open in it (trigger 'live'), otherwise the latest exported file. 'city' defaults to the city
+    open in the game."""
     domain = _check_domain(domain)
     city = _resolve_city(city)
+    data = _domain_data(domain, city)
+    if domain == "problems":
+        try:
+            m = _map_data(city)
+        except ToolError:
+            m = None
+        data = problems.digest(data, m)
+    return data
+
+
+def _domain_data(domain: str, city: str) -> dict[str, Any]:
     status = _live("/status")
     if status and status.get("cityOpen") and status.get("city") == city:
         data = _live(f"/live/{domain}")
@@ -366,6 +380,7 @@ def _map_data(city: str) -> maps.MapData:
             data = maps.MapData.from_exports(parts["grids"], parts["network"], parts["buildings"],
                                              utilities if utilities and "error" not in utilities else None,
                                              zones if zones and "error" not in zones else None)
+            data.problems = _live("/live/problems") or {}
             _MAP_CACHE[city] = (time.time(), data)
             return data
     folder = _cities_dir() / city
@@ -374,17 +389,23 @@ def _map_data(city: str) -> maps.MapData:
         raise ToolError(f"No map data for '{city}' yet: open it in the game (live), or play past 00:00 once so the mod saves the map.")
     utilities = folder / "map-utilities.json"
     zones = folder / "map-zones.json"
-    return maps.MapData.from_exports(*(_read_json(f) for f in files), _read_json(utilities) if utilities.exists() else None,
+    data = maps.MapData.from_exports(*(_read_json(f) for f in files), _read_json(utilities) if utilities.exists() else None,
                                      _read_json(zones) if zones.exists() else None)
+    problems_file = folder / "problems.json"
+    data.problems = _read_json(problems_file) if problems_file.exists() else {}
+    return data
 
 
 @mcp.tool()
 def get_map(layer: str = "base", area: str = "", city: str = "", mark_sources: bool = True, marks: list[str] | None = None) -> Image:
     """Draw a map of the city as an image: roads, water, district outlines and the game's map tiles as a
     lettered grid, with one layer on top: base, air, ground, noise, water-pollution, groundwater,
-    groundwater-pollution, land-value, population or wind (grids); traffic, electricity, water, sewage, or
+    groundwater-pollution, land-value, population, wind or telecom (internet quality; the game's Telecom panel
+    has no numbers, this is the coverage map behind it) (grids); traffic, electricity, water, sewage, or
     coverage-healthcare / -fire / -police / -park / -post / -education / -shelter / -welfare (drawn on the
-    roads and lines); zoning (zoned cells by type, built or empty, free roadside land, tiles not owned). Polluting buildings are marked on pollution layers; wind arrows on air and wind;
+    roads and lines); zoning (zoned cells by type, built or empty, free roadside land, tiles not owned);
+    problems (the game's warning icons as dots, one colour per type) or problems:<type> for one icon type
+    (type name or in-game title, as get_city_data('problems') lists them). Polluting buildings are marked on pollution layers; wind arrows on air and wind;
     bottlenecks and buildings short of power or water on the utility layers. 'area' zooms in: one tile
     ('D4') or two corners ('C3:F6').
     The image is also saved in the city's maps folder."""
@@ -406,21 +427,34 @@ def map_hotspots(layer: str, top: int = 10, area: str = "", city: str = "") -> d
     """The worst places on one map layer, each with a 'where' in street names. Grid layers (air, ground,
     noise, water-pollution, groundwater-pollution, land-value, population): separate peaks with value,
     homes and households within 300 m, the wind, and the strongest polluting buildings within 2 km.
-    traffic: the most jammed busy roads with their worst time of day. coverage-<service>: places where many
+    problems: places with the most warning icons (priority Problem and up) and the mix of icon types there.
+    telecom: places where most households lose internet happiness, plus a city-wide 'summary' (share of
+    households below the happiness baseline) - the way to judge internet service. traffic: the most jammed busy roads with their worst time of day. coverage-<service>: places where many
     households sit on poorly covered roads. electricity: bottleneck and disconnected lines, then clusters
     of buildings short of power. water / sewage: clusters of buildings short of water / sewage."""
     city = _resolve_city(city)
     data = _map_data(city)
     layer = layer.strip().lower()
     try:
-        if layer in networks.LAYERS:
+        if layer == "problems":
+            if not data.problems:
+                raise ValueError("No problem-icon data for this city yet (needs the mod version of 2026-10-31 or later).")
+            spots = problems.hotspots(data.problems, data, max(1, min(top, 30)), maps.area_bounds(area) if area else None)
+        elif layer in networks.LAYERS:
             spots = networks.hotspots(data, layer, max(1, min(top, 30)), area)
         else:
             spots = maps.hotspots(data, layer, max(1, min(top, 30)), area)
     except ValueError as e:
         raise ToolError(str(e))
-    return {"city": city, "layer": layer, "data": data.when, "hotspots": spots,
-            "note": "Values are game units; compare places with each other, not with other cities."}
+    result = {"city": city, "layer": layer, "data": data.when, "hotspots": spots,
+              "note": "Values are game units; compare places with each other, not with other cities."}
+    if layer == "telecom":
+        try:
+            result["summary"] = maps.telecom_summary(data)
+        except ValueError as e:
+            raise ToolError(str(e))
+        result["note"] = "Network quality 0-1 per place and internet happiness points per citizen (game formula)."
+    return result
 
 
 

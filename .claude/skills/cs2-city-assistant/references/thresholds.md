@@ -7,6 +7,23 @@ General rules:
 - If the data for a domain is missing or comes only from a `load` export with known lag, say so in the one-liner and lower your confidence rather than the status.
 - Small cities (under about 1,000 citizens) swing a lot month to month; prefer "watch" over "problem" unless the trend over two or more months agrees.
 
+## Problem icons (all domains)
+
+The game's warning icons (problems.json) are the game's own list of what goes wrong. Use them two ways:
+
+1. **The Problems line** at the top of every report: the most serious types first (priority MajorProblem and up), then the most common, each with its count and where (district or worst place). Say "none worth mentioning" when only a few low-priority icons exist.
+2. **In the domain ratings.** Each icon type belongs to the domain that fixes it. Rate that domain at least **problem** when a type of priority MajorProblem or higher sits on more than 1 % of buildings, or any type on more than 5 %; at least **watch** when a type of priority Problem or higher sits on more than 0.5 % of buildings, or 5 or more MajorProblem-and-up icons exist. These bands are guesses (not from the game), to be tuned with real cities. Read each type's `title` and `description`, and place it by meaning:
+   - Growth and land use: high rent, abandoned, condemned, collapsed, waiting for level-up materials, zoned buildings without road access.
+   - Economy and industry: no customers, no inputs / input too expensive, not enough workers.
+   - Public services: garbage piling up, landfill or cemetery full, waiting for ambulance or hearse, crime scene, building on fire / burned down, out of supplies, mail piling up, building turned off.
+   - Utilities: no electricity, no water, no sewage, dirty water, battery empty, power or pump bottlenecks.
+   - Road traffic: traffic bottleneck, dead end, accident, no connection to the outside, lost road connection.
+   - Public transport: line short of vehicles, route not found.
+   - Environment: pollution icons on homes.
+   - A type that fits nowhere: mention it in the Problems line and say which domain you counted it in.
+
+An icon is a symptom, not a cause: say what the game shows, then use the domain's data to explain why (e.g. garbage icons + garbage rate above processing = not enough garbage capacity; garbage icons with spare capacity = trucks can't reach, check traffic).
+
 ## 1. Finance
 Use `finance.json` summary. "Runway" = cash / monthly deficit.
 
@@ -42,7 +59,7 @@ Use services.json, one sub-rating per service; the worst sets the domain status.
 | watch | any availability gauge between -0.2 and 0.1; cemetery or landfill over 70 % full |
 | fine | otherwise |
 
-Skip a service whose numbers are all 0 in a warm-up export (seen for post in Mega City) instead of calling it a problem. Never rate telecom from services.json: the game leaves that value at 0 (see data-reference section 5); use the `Telecom` happiness factor.
+Skip a service whose numbers are all 0 in a warm-up export (seen for post in Mega City) instead of calling it a problem. Never rate telecom from services.json: the game leaves that value at 0 (see data-reference section 5). Use `map_hotspots("telecom")`: its `summary.shareBelowBaselinePercent` is the share of households whose internet makes them unhappy. Guessed bands (not from the game): problem above 25 %, watch 5-25 %, fine below 5 %. Second check: the `Telecom` happiness factor in wellbeing.json.
 
 ## 5. Utilities
 Reserve = (production or capacity - consumption) / consumption.

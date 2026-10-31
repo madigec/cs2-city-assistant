@@ -53,6 +53,8 @@ namespace CityAssistant.Export
         public readonly EntityQuery ZoneBlocks;
         /// <summary>The map tiles (owned ones lack the Native tag).</summary>
         public readonly EntityQuery MapTiles;
+        /// <summary>Warning icons (notifications) over buildings, roads and vehicles.</summary>
+        public readonly EntityQuery Icons;
 
         public GameData(World world)
         {
@@ -115,6 +117,11 @@ namespace CityAssistant.Export
             MapTiles = EntityManager.CreateEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<MapTile>(), ComponentType.ReadOnly<Area>() },
+                None = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
+            });
+            Icons = EntityManager.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<Game.Notifications.Icon>(), ComponentType.ReadOnly<PrefabRef>() },
                 None = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
             });
         }

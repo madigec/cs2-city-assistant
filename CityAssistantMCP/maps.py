@@ -42,7 +42,22 @@ LAYERS: dict[str, tuple[str | None, int, str, str, str | None]] = {
     "land-value": ("landValue", 0, "viridis", "Land value (raw game value)", None),
     "population": ("population", 0, "Purples", "Residents per cell", None),
     "wind": ("wind", 0, "", "Wind", None),
+    "telecom": ("telecomQuality", 0, "RdYlGn", "Internet quality", None),
 }
+
+# Telecom. Network quality per cell = min(1, signal / (127.5 + load)) (TelecomCoverage.SampleNetworkQuality).
+# Citizens' internet happiness: quality q >= baseline gives +((q - b) / (1 - b))^2 x bonus, below it
+# -(1 - q / b)^2 x penalty (CitizenHappinessSystem.GetTelecomBonuses). Code defaults of CitizenHappinessPrefab;
+# the game's asset values were not checked.
+TELECOM_BASELINE = 0.3
+TELECOM_BONUS = 10.0
+TELECOM_PENALTY = 20.0
+
+
+def telecom_happiness(q: np.ndarray) -> np.ndarray:
+    """Internet happiness points for a citizen at network quality q (-20 .. +10 with the code defaults)."""
+    b = TELECOM_BASELINE
+    return np.where(q >= b, ((q - b) / (1 - b)) ** 2 * TELECOM_BONUS, -((1 - q / b) ** 2) * TELECOM_PENALTY)
 SOURCE_CHANNEL = {"air": 2, "ground": 3, "noise": 4}
 
 # Game noise overflow. BuildingPollutionAddSystem.AddSingle adds a building's noise share for each grid cell
@@ -119,6 +134,7 @@ class MapData:
     utilities: dict[str, Any] = field(default_factory=dict)     # map-utilities export (power and water networks)
     network_raw_parent: dict[str, Any] = field(default_factory=dict)  # the whole map-network export (colour ranges)
     zones: Any = None                                           # plans.Zones from the map-zones export (layout plans)
+    problems: dict[str, Any] = field(default_factory=dict)      # problems export (warning icons), when available
 
     @staticmethod
     def from_exports(grids: dict, network: dict, buildings: dict, utilities: dict | None = None, zones: dict | None = None) -> "MapData":
@@ -152,6 +168,8 @@ class MapData:
 
     def grid(self, name: str, channel: int = 0) -> np.ndarray:
         """A grid as a 2D array indexed [row, column], row 0 = south."""
+        if name == "telecomQuality":
+            return np.minimum(1.0, self.grid("telecom", 0) / (127.5 + self.grid("telecom", 1)))
         g = self.grids.get(name)
         if not g or "values" not in g:
             raise ValueError(f"Grid '{name}' is not in this export ({(g or {}).get('error', 'missing')}).")
@@ -337,9 +355,17 @@ def render(m: MapData, layer: str, area: str = "", mark_sources: bool = True, ma
     import networks  # network layers (traffic, coverage, power, water) live in their own module
     import plans  # zoning layer and layout plans
 
-    if layer not in LAYERS and layer not in networks.LAYERS and layer not in plans.LAYERS:
-        raise ValueError(f"Unknown layer '{layer}'. Use one of: {', '.join(list(LAYERS) + list(networks.LAYERS) + list(plans.LAYERS))}")
-    grid_name, channel, cmap, title, source_kind = LAYERS.get(layer) or (None, 0, "", networks.LAYERS.get(layer) or plans.LAYERS[layer], None)
+    import problems  # warning icons
+
+    problem_type = layer.split(":", 1)[1].strip() if layer.startswith("problems:") else ""
+    if layer.startswith("problems"):
+        if not m.problems:
+            raise ValueError("No problem-icon data for this city yet (needs the mod version of 2026-10-31 or later; open the city in the game).")
+        grid_name, channel, cmap, title, source_kind = None, 0, "", problems.TITLE + (f": {problem_type}" if problem_type else ""), None
+    elif layer not in LAYERS and layer not in networks.LAYERS and layer not in plans.LAYERS:
+        raise ValueError(f"Unknown layer '{layer}'. Use one of: {', '.join(list(LAYERS) + list(networks.LAYERS) + list(plans.LAYERS) + ['problems', 'problems:<type>'])}")
+    else:
+        grid_name, channel, cmap, title, source_kind = LAYERS.get(layer) or (None, 0, "", networks.LAYERS.get(layer) or plans.LAYERS[layer], None)
     if plan:
         title = f"Plan: {plan['goal']}"
     x0, x1, z0, z1 = bounds or (area_bounds(area) if area else m.city_bounds())
@@ -357,7 +383,20 @@ def render(m: MapData, layer: str, area: str = "", mark_sources: bool = True, ma
         pass
 
     # The chosen layer as a heat map (cells with 0 stay see-through).
-    if grid_name and layer != "wind":
+    if layer == "telecom":
+        # Fixed 0-1 scale (red = no or poor internet), drawn only near roads so empty land stays clear.
+        q = m.grid(grid_name, channel)
+        size = q.shape[0]
+        near_road = np.zeros_like(q, dtype=bool)
+        if len(m.roads):
+            pts = _bezier_points(m.roads, steps=6).reshape(-1, 2)
+            cells = np.clip(((pts + HALF) / MAP_METRES * size).astype(int), 0, size - 1)
+            near_road[cells[:, 1], cells[:, 0]] = True
+        image = ax.imshow(np.ma.masked_where(~near_road, q), extent=full, origin="lower", cmap=cmap, vmin=0, vmax=1,
+                          alpha=0.7, zorder=2, interpolation="nearest")
+        bar = fig.colorbar(image, ax=ax, fraction=0.035, pad=0.02)
+        bar.set_label(f"Network quality (0 = none, 1 = full; below {TELECOM_BASELINE} citizens are unhappy)")
+    elif grid_name and layer != "wind":
         values = noise_for_display(m) if layer == "noise" else m.grid(grid_name, channel)
         if layer == "water-pollution":
             values = np.where(m.grid("surfaceWater", 0) > 0.5, values, 0)
@@ -384,6 +423,8 @@ def render(m: MapData, layer: str, area: str = "", mark_sources: bool = True, ma
         ax.add_collection(LineCollection(lines[keep], colors="#4a4a4a", linewidths=widths, zorder=3))
     if layer == "zoning":
         footnote += plans.draw_zoning(ax, m, x0, x1, z0, z1, faint=plan is not None)
+    if layer.startswith("problems"):
+        problems.draw(ax, fig, m.problems, x0, x1, z0, z1, problem_type)
 
     # Wind arrows on air pollution and wind maps (wind blows in the arrow's direction).
     if layer in ("wind", "air"):
@@ -530,9 +571,11 @@ def _short(prefab_name: str) -> str:
 def hotspots(m: MapData, layer: str, top: int = 10, area: str = "") -> list[dict[str, Any]]:
     """The worst places on one layer: separate peaks, each with its map tile, district, value, homes hit
     nearby, the wind there and the strongest polluting buildings around it."""
+    if layer == "telecom":
+        return telecom_hotspots(m, top, area)
     grid_name, channel, _, title, source_kind = LAYERS.get(layer, (None, 0, "", "", None))
     if not grid_name or layer == "wind":
-        raise ValueError("Hotspots need a value layer: air, ground, noise, water-pollution, groundwater-pollution, land-value or population.")
+        raise ValueError("Hotspots need a value layer: air, ground, noise, water-pollution, groundwater-pollution, land-value, population or telecom.")
     values = noise_for_display(m) if layer == "noise" else m.grid(grid_name, channel).copy()
     overflowed = {cell: o for o in noise_overflows(m) for cell in o["cells"]} if layer == "noise" else {}
     if layer == "water-pollution":
@@ -589,4 +632,76 @@ def hotspots(m: MapData, layer: str, top: int = 10, area: str = "") -> list[dict
                 for i in order if near[i]
             ]
         result.append(entry)
+    return result
+
+
+# ---------- telecom ----------
+
+def _home_quality(m: MapData) -> tuple[np.ndarray, np.ndarray, int]:
+    """Network quality at every home, the grid cell of each home, and the grid size."""
+    q = m.grid("telecomQuality")
+    size = q.shape[0]
+    cols = np.clip(((m.homes[:, 0] + HALF) / MAP_METRES * size).astype(int), 0, size - 1)
+    rows = np.clip(((m.homes[:, 1] + HALF) / MAP_METRES * size).astype(int), 0, size - 1)
+    return q[rows, cols], rows * size + cols, size
+
+
+def telecom_summary(m: MapData) -> dict[str, Any]:
+    """City-wide internet service for residents: how many households sit below the happiness baseline."""
+    if not len(m.homes):
+        return {}
+    q, _, _ = _home_quality(m)
+    hh = m.homes[:, 2]
+    total = float(hh.sum())
+    if total <= 0:
+        return {}
+    below = float(hh[q < TELECOM_BASELINE].sum())
+    return {
+        "households": int(total),
+        "householdsBelowBaseline": int(below),
+        "shareBelowBaselinePercent": round(100 * below / total, 1),
+        "householdsWithNoSignal": int(hh[q < 0.01].sum()),
+        "averageInternetHappiness": round(float((telecom_happiness(q) * hh).sum() / total), 1),
+        "note": (f"Network quality below {TELECOM_BASELINE} makes citizens unhappy (down to -{TELECOM_PENALTY:g} points at "
+                 f"no signal); full quality gives up to +{TELECOM_BONUS:g}. Game code defaults, asset values not checked. "
+                 "Homes only: offices and companies also lose efficiency on poor internet."),
+    }
+
+
+def telecom_hotspots(m: MapData, top: int = 10, area: str = "") -> list[dict[str, Any]]:
+    """Places where the most households lose internet happiness, worst first."""
+    if not len(m.homes):
+        return []
+    q_home, cell, size = _home_quality(m)
+    loss_home = m.homes[:, 2] * np.maximum(0.0, -telecom_happiness(q_home))
+    loss = np.zeros(size * size)
+    np.add.at(loss, cell, loss_home)
+    loss = loss.reshape(size, size)
+    cell_m = MAP_METRES / size
+    centres = -HALF + (np.arange(size) + 0.5) * cell_m
+    if area:
+        x0, x1, z0, z1 = area_bounds(area)
+        mask = (centres[None, :] >= x0) & (centres[None, :] <= x1) & (centres[:, None] >= z0) & (centres[:, None] <= z1)
+        loss = np.where(mask, loss, 0)
+    q = m.grid("telecomQuality")
+    radius = max(2, int(round(400 / cell_m)))
+    result = []
+    for _ in range(top):
+        r, c = np.unravel_index(int(np.argmax(loss)), loss.shape)
+        if loss[r, c] <= 0:
+            break
+        loss[max(0, r - radius):r + radius + 1, max(0, c - radius):c + radius + 1] = 0
+        x, z = float(centres[c]), float(centres[r])
+        near = np.hypot(m.homes[:, 0] - x, m.homes[:, 1] - z) < 300
+        poor = near & (q_home < TELECOM_BASELINE)
+        result.append({
+            "where": m.describe(x, z),
+            "square": square_of(x, z),
+            "district": m.district_of(x, z),
+            "networkQuality": round(float(q[r, c]), 2),
+            "internetHappiness": round(float(telecom_happiness(np.array(q[r, c]))), 1),
+            "householdsWithin300m": int(m.homes[near, 2].sum()),
+            "householdsBelowBaselineWithin300m": int(m.homes[poor, 2].sum()),
+            "position": [round(x), round(z)],
+        })
     return result
