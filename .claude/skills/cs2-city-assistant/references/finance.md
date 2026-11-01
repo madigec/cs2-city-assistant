@@ -50,7 +50,7 @@ Work down the list; stop when the cause is clear, but mention any second cause.
 
 ### Taxes and companies leaving
 
-Source: game code (`CompanyMoveAwaySystem`, `CompanyUtils.GetCompanyMoveAwayChance`, 1.6.1f1), not yet observed in game. Shops, industry and offices (not extractors or warehouses) roll a chance to leave the city 16 times per game day (one day = one month on the calendar). The chance per roll is (product tax - 10) x 2.5 %, rounded down, plus 5 % while the building shows "Lack of Labor". At 10 % tax or less it is 0, so only bankruptcy makes companies leave. Above 10 % it adds up fast:
+Source: game code (`CompanyMoveAwaySystem`, `CompanyUtils.GetCompanyMoveAwayChance`, 1.6.1f1), **confirmed in game** on Mega City (1 Nov 2026): with the Financial office tax raised from 10 % to 13 %, the finance offices went from 218 to 181 in 3 game hours (the code predicts about 30 leaving; 37 did), while the 325 software offices left at 10 % lost none. No new finance offices replaced them in that time. Shops, industry and offices (not extractors or warehouses) roll a chance to leave the city 16 times per game day (one day = one month on the calendar). The chance per roll is (product tax - 10) x 2.5 %, rounded down, plus 5 % while the building shows "Lack of Labor". At 10 % tax or less it is 0, so only bankruptcy makes companies leave. Above 10 % it adds up fast:
 
 | Product tax | Chance per roll | Chance to leave within a game day (month) |
 |---|---|---|
