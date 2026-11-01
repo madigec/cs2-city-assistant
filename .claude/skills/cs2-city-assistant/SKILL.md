@@ -56,6 +56,8 @@ If the tools are not available, read the files directly. Exports live in the mod
     environment.json       pollution (8)                     wellbeing.json   happiness + factors (9)
     districts.json         the same figures per district the player has drawn (residents, happiness, jobs, services, policies)
     problems.json          the game's warning icons: count per icon type and where each one is
+    (services, economy, transport, finance and utilities also carry per-building, per-resource, per-line and
+     per-product detail since 1 Nov 2026: see data-reference section 6c)
     history\YYYY-MM\00h_overview.json, 00h_finance.json, ...   4 snapshots per in-game month:
                    06h_..., 12h_..., 18h_...              00:00, 06:00, 12:00, 18:00 game time
     history\abandoned\     snapshots played but not saved - not part of this save's history

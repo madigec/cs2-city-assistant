@@ -17,6 +17,7 @@ namespace CityAssistant.Export
 
             o.Add("electricity", GameData.Safe("electricity", () => InfoviewReader.Read<ElectricityInfoviewUISystem>(world)));
             o.Add("water", GameData.Safe("water", () => InfoviewReader.Read<WaterInfoviewUISystem>(world)));
+            o.Add("details", GameData.Safe("details", () => UtilityDetailsExport.Build(g)));
             return o;
         }
     }

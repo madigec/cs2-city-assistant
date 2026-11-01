@@ -48,6 +48,12 @@ Work down the list; stop when the cause is clear, but mention any second cause.
 | Remove or downsize an oversized facility | Player | - | Saves upkeep at once | Check reserves and coverage first |
 | Grow the tax base: zone what demand asks for | Player zones | - | Several months | Needs services and jobs to follow |
 
+### Fees, budgets and building costs (finance.json `serviceDetails`, `taxByProduct`; added 2026-11-01)
+
+- Before proposing a **fee change**, read that fee's `consumptionMultiplier`, `efficiencyMultiplier` and `happinessEffect` in `serviceDetails` (the Services tab's own numbers): a higher fee lowers use (less import, less load) but can cost building efficiency and happiness. Before a **budget change**, read the service's `efficiency` at its current `budgetPercentage`: the budget works through a curve, not one-to-one (game code `CityServiceBudgetSystem.GetServiceEfficiency`).
+- `taxByProduct` shows which products carry the tax income: a tax change on a product with little taxable income earns little.
+- **Bulldoze refund window** (game code defaults in `EconomyPrefab`, spot-checked in code, not checked in game): a building removed soon after it was built gives back 75 % of its cost within 0.04 game days (about an hour of game time), 50 % within half a day, 25 % within one day; roads give back 100 % / 75 % / 50 % at the same times. After one game day nothing comes back. So a misplaced building or road is cheapest to fix right away.
+
 ### Taxes and companies leaving
 
 Source: game code (`CompanyMoveAwaySystem`, `CompanyUtils.GetCompanyMoveAwayChance`, 1.6.1f1), **confirmed in game** on Mega City (1 Nov 2026): with the Financial office tax raised from 10 % to 13 %, the finance offices went from 218 to 181 in 3 game hours (the code predicts about 30 leaving; 37 did), while the 325 software offices left at 10 % lost none. No new finance offices replaced them in that time. Shops, industry and offices (not extractors or warehouses) roll a chance to leave the city 16 times per game day (one day = one month on the calendar). The chance per roll is (product tax - 10) x 2.5 %, rounded down, plus 5 % while the building shows "Lack of Labor". At 10 % tax or less it is 0, so only bankruptcy makes companies leave. Above 10 % it adds up fast:

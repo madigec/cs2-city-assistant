@@ -26,6 +26,7 @@ namespace CityAssistant.Export
             o.Add("disasterShelters", GameData.Safe("disasterShelters", () => InfoviewReader.Read<DisasterInfoviewUISystem>(world)));
 
             o.Add("buildings", GameData.Safe("buildings", () => Buildings(g)));
+            o.Add("buildingDetails", GameData.Safe("buildingDetails", () => ServiceBuildingsExport.Services(g)));
             return o;
         }
 

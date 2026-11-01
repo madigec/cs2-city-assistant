@@ -21,6 +21,36 @@ namespace CityAssistant.Export
     {
         private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
+        /// <summary>
+        /// Runs one of a panel's private writer methods (the ones behind its map bindings, e.g.
+        /// ServiceBudgetUISystem.WriteServiceDetails(writer, serviceEntity)) and returns what it wrote.
+        /// </summary>
+        public static object CallWriter<TSystem>(World world, string method, params object[] args) where TSystem : ComponentSystemBase
+        {
+            var system = world.GetExistingSystemManaged<TSystem>();
+            if (system == null)
+                throw new InvalidOperationException($"{typeof(TSystem).Name} not found");
+            MethodInfo found = null;
+            foreach (var m in typeof(TSystem).GetMethods(Private | BindingFlags.Public))
+            {
+                var p = m.GetParameters();
+                if (m.Name == method && p.Length == args.Length + 1 && p[0].ParameterType == typeof(IJsonWriter))
+                {
+                    found = m;
+                    break;
+                }
+            }
+            if (found == null)
+                throw new MissingMethodException(typeof(TSystem).Name, method);
+            return JsonCapture.Capture(w =>
+            {
+                var all = new object[args.Length + 1];
+                all[0] = w;
+                Array.Copy(args, 0, all, 1, args.Length);
+                found.Invoke(system, all);
+            });
+        }
+
         public static JsonObject Read<TSystem>(World world) where TSystem : ComponentSystemBase
         {
             var system = world.GetExistingSystemManaged<TSystem>();

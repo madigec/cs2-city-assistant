@@ -39,6 +39,9 @@ namespace CityAssistant.Export
             o.Add("naturalResources", GameData.Safe("naturalResources", () => InfoviewReader.Read<NaturalResourcesInfoviewUISystem>(world)));
             o.Add("tourism", GameData.Safe("tourism", () => InfoviewReader.Read<TourismInfoviewUISystem>(world)));
             o.Add("companiesByProduct", GameData.Safe("companiesByProduct", () => CompaniesExport.Build(g)));
+            o.Add("efficiencyByZone", GameData.Safe("efficiencyByZone", () => ServiceBuildingsExport.Zoned(g)));
+            o.Add("production", GameData.Safe("production", () => EconomyDetailsExport.Production(world)));
+            o.Add("commuters", GameData.Safe("commuters", () => EconomyDetailsExport.Commuters(g)));
             return o;
         }
 
@@ -61,6 +64,7 @@ namespace CityAssistant.Export
         {
             var o = g.Header("transport", trigger);
             o.Add("transport", GameData.Safe("transport", () => InfoviewReader.Read<TransportInfoviewUISystem>(world)));
+            o.Add("lines", GameData.Safe("lines", () => TransitExport.Build(g, world)));
             return o;
         }
 

@@ -147,6 +147,10 @@ namespace CityAssistant.Export
                 return services;
             }));
 
+            o.Add("taxByProduct", GameData.Safe("taxByProduct", () => EconomyDetailsExport.TaxByProduct(g)));
+            o.Add("serviceDetails", GameData.Safe("serviceDetails", () => EconomyDetailsExport.ServiceDetails(g, world)));
+            o.Add("wagesAndBenefits", GameData.Safe("wagesAndBenefits", () => EconomyDetailsExport.Wages(g)));
+            o.Add("policyEffects", GameData.Safe("policyEffects", () => PoliciesExport.Build(g, world)));
             return o;
         }
     }

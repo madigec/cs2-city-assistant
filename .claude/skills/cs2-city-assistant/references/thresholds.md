@@ -67,6 +67,8 @@ Use services.json, one sub-rating per service; the worst sets the domain status.
 
 Skip a service whose numbers are all 0 in a warm-up export (seen for post in Mega City) instead of calling it a problem. Never rate telecom from services.json: the game leaves that value at 0 (see data-reference section 5). Use `map_hotspots("telecom")`: its `summary.shareBelowBaselinePercent` is the share of households whose internet makes them unhappy. Guessed bands (not from the game): problem above 25 %, watch 5-25 %, fine below 5 %. Second check: the `Telecom` happiness factor in wellbeing.json.
 
+**Per building** (services.json `buildingDetails`, added 2026-11-01; bands guessed): **problem** if any school, hospital or jail/prison has `load.percent` above 110, a cemetery or landfill above 95, or a service's `averageEfficiencyPercent` below 60; **watch** if any of those is above 90 (cemetery / landfill above 80), a service's average efficiency is below 80, or most buildings of a service have all their vehicles `out` (calls wait for a free vehicle). Name the building by its `where`, and the main reason from `losses` / `biggestLosses` (e.g. NotEnoughEmployees -> education or wages; ServiceBudget -> budget slider; ElectricitySupply -> power). City totals can look fine while one building is overloaded: always check the list.
+
 ## 5. Utilities
 Reserve = (production or capacity - consumption) / consumption.
 
@@ -76,11 +78,15 @@ Reserve = (production or capacity - consumption) / consumption.
 | watch | reserve under 15 % for any of them; or importing electricity/water costs more than 5 % of income |
 | fine | all reserves >= 15 % and everything fulfilled |
 
+Also (utilities.json `details`, added 2026-11-01; guessed): **problem** if `dirtyTapWater.dirtyPercent` above 5; **watch** above 1, or any pump `pumpingDirtyWater` (move the pump away from sewage outlets and polluted ground, or fix the pollution). Power plants far below capacity while power is short point at their reason: wind, sun, water depth or missing fuel.
+
 ## 6. Road traffic
 traffic.json covers the city-wide flow chart, parking, bicycles, accidents now, through traffic and road condition; jams at places come from `map_hotspots("traffic")` and the Traffic jam icons (problems). Rate **watch** if `parkingAvailability` or `bikeParkingAvailability` is below 0, if `roadCondition.segmentsBelow50Percent` is above 10 % of segments (no or too few road maintenance depots), or if `throughTraffic.throughTrafficPercent` is above 30 % (outside traffic crowding city roads; a bypass may help). Rate **problem** if more than 25 % of segments are below 50 % condition. Bands are guesses. `accidents` is a moment, not a rate: mention a spot only when the Traffic accident icons cluster there.
 
 ## 7. Public transport
 transport.json: report per transport type the lines and passengers. **Watch** if a type has lines but almost no passengers (money spent for little use); otherwise informational until the passenger numbers are verified.
+
+Per line (transport.json `lines`, added 2026-11-01; guessed): **watch** if any line has `notEnoughVehicles` (no depot or depot full), a line's `usagePercent` stays above 90 (crowded: more vehicles), or `averageWaitSeconds` is much higher than on the other lines of its type; **problem** if a quarter of the lines are short of vehicles. A line with very low usage and many vehicles costs upkeep for little: suggest fewer vehicles or a new route.
 
 ## 8. Environment
 environment.json gauges. Until their scale is verified: **watch** if a pollution type appears among the top negative `happinessFactors` (wellbeing.json); **problem** if it is the strongest negative factor. Otherwise fine.
