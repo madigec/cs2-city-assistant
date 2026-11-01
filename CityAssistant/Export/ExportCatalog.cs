@@ -13,7 +13,7 @@ namespace CityAssistant.Export
         public static readonly string[] Names =
         {
             "overview", "finance", "services", "utilities", "growth", "economy",
-            "traffic", "transport", "environment", "wellbeing", "districts", "problems", "disasters", "statistics",
+            "traffic", "transport", "environment", "wellbeing", "districts", "problems", "disasters", "statistics", "progression",
         };
 
         /// <summary>Builds one export by name (one of <see cref="Names"/>), or returns null for an unknown name.</summary>
@@ -35,6 +35,7 @@ namespace CityAssistant.Export
                 case "problems": return ProblemsExport.Build(g, trigger);
                 case "disasters": return Wave3Exports.Disasters(g, world, trigger);
                 case "statistics": return Wave3Exports.History(g, trigger);
+                case "progression": return ProgressionExport.Build(g, world, trigger);
                 default: return null;
             }
         }

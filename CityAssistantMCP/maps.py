@@ -43,6 +43,10 @@ LAYERS: dict[str, tuple[str | None, int, str, str, str | None]] = {
     "population": ("population", 0, "Purples", "Residents per cell", None),
     "wind": ("wind", 0, "", "Wind", None),
     "telecom": ("telecomQuality", 0, "RdYlGn", "Internet quality", None),
+    "fertility": ("naturalResources", 0, "YlGn", "Fertile land left (natural resources)", None),
+    "ore": ("naturalResources", 1, "Greys", "Ore left (natural resources)", None),
+    "oil": ("naturalResources", 2, "copper", "Oil left (natural resources)", None),
+    "fish": ("naturalResources", 3, "PuBu", "Fish left (natural resources)", None),
 }
 
 # Telecom. Network quality per cell = min(1, signal / (127.5 + load)) (TelecomCoverage.SampleNetworkQuality).
@@ -575,7 +579,7 @@ def hotspots(m: MapData, layer: str, top: int = 10, area: str = "") -> list[dict
         return telecom_hotspots(m, top, area)
     grid_name, channel, _, title, source_kind = LAYERS.get(layer, (None, 0, "", "", None))
     if not grid_name or layer == "wind":
-        raise ValueError("Hotspots need a value layer: air, ground, noise, water-pollution, groundwater-pollution, land-value, population or telecom.")
+        raise ValueError("Hotspots need a value layer: air, ground, noise, water-pollution, groundwater-pollution, land-value, population, telecom, fertility, ore, oil or fish.")
     values = noise_for_display(m) if layer == "noise" else m.grid(grid_name, channel).copy()
     overflowed = {cell: o for o in noise_overflows(m) for cell in o["cells"]} if layer == "noise" else {}
     if layer == "water-pollution":

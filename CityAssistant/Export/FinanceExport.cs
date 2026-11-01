@@ -151,6 +151,7 @@ namespace CityAssistant.Export
             o.Add("serviceDetails", GameData.Safe("serviceDetails", () => EconomyDetailsExport.ServiceDetails(g, world)));
             o.Add("wagesAndBenefits", GameData.Safe("wagesAndBenefits", () => EconomyDetailsExport.Wages(g)));
             o.Add("policyEffects", GameData.Safe("policyEffects", () => PoliciesExport.Build(g, world)));
+            o.Add("serviceSales", GameData.Safe("serviceSales", () => LeftoverExports.ServiceSales(g, world)));
             return o;
         }
     }

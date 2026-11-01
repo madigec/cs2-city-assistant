@@ -43,6 +43,8 @@ namespace CityAssistant.Export
             o.Add("production", GameData.Safe("production", () => EconomyDetailsExport.Production(world)));
             o.Add("commuters", GameData.Safe("commuters", () => EconomyDetailsExport.Commuters(g)));
             o.Add("tourismDetails", GameData.Safe("tourismDetails", () => Wave3Exports.Tourism(g)));
+            o.Add("extractionSites", GameData.Safe("extractionSites", () => ResourcesExport.ExtractionSites(g, world)));
+            o.Add("demandByProduct", GameData.Safe("demandByProduct", () => LeftoverExports.DemandByProduct(g)));
             return o;
         }
 
@@ -57,6 +59,9 @@ namespace CityAssistant.Export
             o.Add("accidents", GameData.Safe("accidents", () => TrafficExtrasExport.Accidents(g)));
             o.Add("throughTraffic", GameData.Safe("throughTraffic", () => TrafficExtrasExport.ThroughTraffic(g)));
             o.Add("roadCondition", GameData.Safe("roadCondition", () => TrafficExtrasExport.RoadCondition(g)));
+            o.Add("modeShare", GameData.Safe("modeShare", () => LeftoverExports.ModeShare(g)));
+            o.Add("borders", GameData.Safe("borders", () => LeftoverExports.Borders(g, world)));
+            o.Add("parking", GameData.Safe("parking", () => LeftoverExports.Parking(g, world)));
             return o;
         }
 

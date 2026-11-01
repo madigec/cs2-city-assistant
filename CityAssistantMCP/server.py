@@ -24,6 +24,7 @@ from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 import journal
+import numpy as np
 import maps
 import problems
 import networks
@@ -40,7 +41,7 @@ DATA_DIR = Path(
 # Same order as the mod's ExportCatalog.
 DOMAINS = [
     "overview", "finance", "services", "utilities", "growth", "economy",
-    "traffic", "transport", "environment", "wellbeing", "districts", "problems", "disasters", "statistics",
+    "traffic", "transport", "environment", "wellbeing", "districts", "problems", "disasters", "statistics", "progression",
 ]
 HOURS = ["00h", "06h", "12h", "18h"]
 
@@ -189,7 +190,10 @@ def get_city_data(domain: str, city: str = "") -> dict[str, Any]:
     """Current numbers for one domain: overview, finance, services, utilities, growth, economy, traffic,
     transport, environment, wellbeing, districts, problems, disasters (fires, destroyed buildings, weather
     events, the event journal; whether natural disasters are on) or statistics (the game's own history of 60+
-    statistics, one value per month, also from before the mod). problems = the game's warning icons: count
+    statistics, one value per month, also from before the mod) or progression (milestones and what the next ones
+    unlock, development points and every development tree node, locked signature buildings with the game's
+    progress counters, map tiles: permits left, price, upkeep and resources per tile, with a 'where').
+    problems = the game's warning icons: count
     per icon type, the districts with most of them and the worst places in street names. services includes
     every service building with its load, vehicles, efficiency and a 'where'; transport every line; economy
     production per resource and companies per product; finance tax per product, the Services tab and
@@ -204,8 +208,12 @@ def get_city_data(domain: str, city: str = "") -> dict[str, Any]:
         except ToolError:
             m = None
         data = problems.digest(data, m)
-    if domain in ("services", "economy", "disasters"):
+    if domain in ("services", "economy", "disasters", "finance", "traffic"):
         _add_where(data, city)
+    if domain == "traffic":
+        _add_border_flow(data, city)
+    if domain == "progression":
+        _add_tile_places(data, city)
     return data
 
 
@@ -218,6 +226,13 @@ def _add_where(data: dict[str, Any], city: str) -> None:
     tourism = data.get("tourismDetails")
     if isinstance(tourism, dict) and isinstance(tourism.get("topAttractions"), list):
         lists.append(tourism["topAttractions"])
+    for key, inner in (("serviceSales", "buildings"), ("parking", "parkingBuildings"), ("borders", "connections")):
+        part = data.get(key)
+        if isinstance(part, dict) and isinstance(part.get(inner), list):
+            lists.append(part[inner])
+    sites = data.get("extractionSites")
+    if isinstance(sites, dict) and isinstance(sites.get("sites"), list):
+        lists.append(sites["sites"])
     now = data.get("now")
     if isinstance(now, dict) and isinstance(now.get("weatherEvents"), list):
         lists.append(now["weatherEvents"])
@@ -231,6 +246,62 @@ def _add_where(data: dict[str, Any], city: str) -> None:
         for b in items:
             if isinstance(b, dict) and "x" in b and "z" in b:
                 b["where"] = m.describe(float(b["x"]), float(b["z"]))
+
+
+def _add_border_flow(data: dict[str, Any], city: str) -> None:
+    """Road border connections: the traffic flow (0 jammed .. 1 free) on the nearest road, as the Traffic Flow view shows it."""
+    conns = (data.get("borders") or {}).get("connections")
+    if not isinstance(conns, list):
+        return
+    try:
+        m = _map_data(city)
+        t = networks.traffic(m)
+    except Exception:  # noqa: BLE001 - map data is optional here
+        return
+    if not len(m.roads):
+        return
+    mids = maps._bezier_points(m.roads, steps=3)[:, 1]
+    for c in conns:
+        if isinstance(c, dict) and "Road" in str(c.get("type")) and "x" in c:
+            d = np.hypot(mids[:, 0] - c["x"], mids[:, 1] - c["z"])
+            i = int(np.argmin(d))
+            if d[i] < 400:
+                c["nearestRoadFlow"] = round(float(min(t[i, 0], t[i, 1])), 2)
+                c["nearestRoadVolume"] = round(float(t[i, 6]))
+
+
+def _add_tile_places(data: dict[str, Any], city: str) -> None:
+    """Map tiles: the tile label, nextToCity (touches an owned tile; our calculation) and, for tiles the
+    city does not own yet, a 'where' (direction and distance from the city centre, nearest place)."""
+    tiles = (data.get("mapTiles") or {}).get("tiles")
+    if not isinstance(tiles, list):
+        return
+    owned = {maps.square_of(t["x"], t["z"]) for t in tiles if isinstance(t, dict) and t.get("owned")}
+    def neighbours(label: str) -> set[str]:
+        col, row = maps.LETTERS.index(label[0]), int(label[1:])
+        out = set()
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            c, r = col + dc, row + dr
+            if 0 <= c < maps.TILES and 1 <= r <= maps.TILES:
+                out.add(f"{maps.LETTERS[c]}{r}")
+        return out
+    try:
+        m = _map_data(city)
+        cx0, cx1, cz0, cz1 = m.city_bounds()
+        centre = ((cx0 + cx1) / 2, (cz0 + cz1) / 2)
+    except (ToolError, Exception):
+        m, centre = None, None
+    for t in tiles:
+        if not isinstance(t, dict) or "x" not in t:
+            continue
+        label = maps.square_of(t["x"], t["z"])
+        t["tile"] = label
+        if t.get("owned"):
+            continue
+        t["nextToCity"] = bool(neighbours(label) & owned)
+        if m is not None and t["nextToCity"]:
+            dx, dz = t["x"] - centre[0], t["z"] - centre[1]
+            t["where"] = f"{maps.compass(dx, dz)} of the city centre, {round((dx * dx + dz * dz) ** 0.5 / 1000, 1)} km; nearest: {m.describe(t['x'], t['z'])}"
 
 
 def _domain_data(domain: str, city: str) -> dict[str, Any]:
@@ -554,6 +625,51 @@ def find_place(name: str, city: str = "") -> dict[str, Any]:
     if not found:
         raise ToolError(f"Nothing called '{name}' in {city}. Streets: {len(data.streets)}, landmarks: {len(data.landmarks)}.")
     return {"city": city, "found": found[:25], "more": max(0, len(found) - 25)}
+
+
+@mcp.tool()
+def road_users(place: str, city: str = "") -> dict[str, Any]:
+    """Who uses a road right now, like the game's Traffic Routes view: every vehicle and pedestrian on one
+    road segment or with it still ahead on their route, what they travel in (car, bike, truck, bus, service
+    vehicle, on foot), where they are going (homes, offices, shops, industry, outside the city), how many come
+    from outside and how many only pass through, and the top destinations with a 'where'. place = a street
+    name (its busiest segment is used), a landmark, or world metres like -348,-4828. Needs the game open
+    with that city."""
+    city = _resolve_city(city)
+    status = _live("/status")
+    if not (status and status.get("cityOpen") and status.get("city") == city):
+        raise ToolError("road_users needs the game running with this city open (it reads the vehicles' routes live).")
+    m = _map_data(city)
+    x = z = None
+    try:
+        x, z, _ = maps.parse_mark(place + " ")
+    except ValueError:
+        pass
+    if x is None:
+        q = place.strip().lower()
+        idx = [i for i, s in enumerate(m.streets) if s and s.lower() == q] or [i for i, s in enumerate(m.streets) if s and q in s.lower()]
+        if idx:
+            mids = maps._bezier_points(m.roads, steps=3)[:, 1]
+            on = np.isin(m.road_street, idx)
+            try:
+                vol = networks.traffic(m)[:, 6]
+            except Exception:  # noqa: BLE001
+                vol = np.ones(len(m.roads))
+            i = int(np.argmax(np.where(on, vol, -1)))
+            x, z = float(mids[i, 0]), float(mids[i, 1])
+        else:
+            found = m.find(place)
+            if not found:
+                raise ToolError(f"No street or place called '{place}' in {city}.")
+            x, z = float(found[0]["x"]), float(found[0]["z"])
+    data = _live(f"/check/road-users?x={x:.1f}&z={z:.1f}")
+    if data is None or "error" in data:
+        raise ToolError(f"The game did not answer: {data}")
+    data["where"] = m.describe(float(data.get("roadX", x)), float(data.get("roadZ", z)))
+    for d in data.get("topDestinations", []):
+        if isinstance(d, dict) and "x" in d:
+            d["where"] = m.describe(float(d["x"]), float(d["z"]))
+    return {"city": city, **data}
 
 
 @mcp.tool()

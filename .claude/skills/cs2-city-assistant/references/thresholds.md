@@ -25,6 +25,7 @@ The game's warning icons (problems.json) are the game's own list of what goes wr
 An icon is a symptom, not a cause: say what the game shows, then use the domain's data to explain why (e.g. garbage icons + garbage rate above processing = not enough garbage capacity; garbage icons with spare capacity = trucks can't reach, check traffic).
 
 ## 1. Finance
+Hidden sales income (finance.json `serviceSales`, 2026-11-01): money from goods city buildings sell is in no income line; when cash grows faster than the balance says, check `maxIncomePerMonthTotal` before calling it a mistake. Informational.
 Use `finance.json` summary. "Runway" = cash / monthly deficit.
 
 | Status | Rule |
@@ -56,7 +57,10 @@ Added with the 2026-10-31 exports (bands are guesses, not from the game):
 
 **Company health** (economy.json `companiesByProduct`, added 2026-10-31; bands guessed): **watch** when a product with 5+ companies has `profitPercent` below 50 (losing money on average), staffing below 70 % of `maxWorkers`, or a `leaveChancePerGameDayPercent` above 20 % (companies of that product will keep leaving). Before proposing any product or zone tax change, read that product's row: above 10 % tax, every point raises the leave chance (finance.md, "Taxes and companies leaving").
 
+**Demand per product** (economy.json `demandByProduct`, 2026-11-01): when the industry or office bar is high, name the top 3 products by `companyDemand`; a product with `buildingDemand` > 0 needs new zoning of that type. Informational, no band of its own.
+
 ## 4. Trade and tourism
+Borders (traffic.json `borders`): **watch** when a road connection's `nearestRoadFlow` is below 0.5 with many vehicles heading out (guessed band) - trade and commuters queue at the border.
 Informational unless something stands out (bands guessed): **watch** if a product the city's own industry needs is mostly imported while the city could make it (economy.json `production`: `ImportExport` strongly negative, `productionCapacity` low - an opening for that industry), if `commuters.commuterHouseholds` is above 10 % of households (jobs the city's education does not cover), or if `tourismDetails.hotelRoomsUsedPercent` is above 95 (tourists leave when no room is free); **problem** only when trade costs show up as a money problem in Finance. Name the biggest imports and exports, the top attractions by `where`, and the tourism weather effect.
 
 ## 5. Public services
@@ -84,9 +88,11 @@ Reserve = (production or capacity - consumption) / consumption.
 Also (utilities.json `details`, added 2026-11-01; guessed): **problem** if `dirtyTapWater.dirtyPercent` above 5; **watch** above 1, or any pump `pumpingDirtyWater` (move the pump away from sewage outlets and polluted ground, or fix the pollution). Power plants far below capacity while power is short point at their reason: wind, sun, water depth or missing fuel.
 
 ## 7. Road traffic
+Parking (traffic.json `parking`, map layer `parking`): **watch** when `percentOfRoadsFull` is above 30 or several parking buildings are past 100 % (guessed bands) - drivers searching for parking add traffic. Road noise (`road-noise` layer) explains noise near busy roads that no building causes. For a jam, call `road_users` on that street: through traffic and trucks point to different fixes (bypass / highway vs. local roads, cargo rail).
 traffic.json covers the city-wide flow chart, parking, bicycles, accidents now, through traffic and road condition; jams at places come from `map_hotspots("traffic")` and the Traffic jam icons (problems). Rate **watch** if `parkingAvailability` or `bikeParkingAvailability` is below 0, if `roadCondition.segmentsBelow50Percent` is above 10 % of segments (no or too few road maintenance depots), or if `throughTraffic.throughTrafficPercent` is above 30 % (outside traffic crowding city roads; a bypass may help). Rate **problem** if more than 25 % of segments are below 50 % condition. Bands are guesses. `accidents` is a moment, not a rate: mention a spot only when the Traffic accident icons cluster there.
 
 ## 8. Public transport
+Mode share (traffic.json `modeShare`, a snapshot): report the car share of residents next to the transit shares; compare only snapshots at the same game hour. A car share above ~70 % with jams is a reason to propose transit (guessed band).
 transport.json: report per transport type the lines and passengers. **Watch** if a type has lines but almost no passengers (money spent for little use); otherwise informational until the passenger numbers are verified.
 
 Per line (transport.json `lines`, added 2026-11-01; guessed): **watch** if any line has `notEnoughVehicles` (no depot or depot full), a line's `usagePercent` stays above 90 (crowded: more vehicles), or `averageWaitSeconds` is much higher than on the other lines of its type; **problem** if a quarter of the lines are short of vehicles. A line with very low usage and many vehicles costs upkeep for little: suggest fewer vehicles or a new route.
@@ -107,6 +113,8 @@ Happiness (wellbeing.json `averageHappiness`) and health (services.json `average
 
 ## 11. Progression
 Informational: report milestone, progress to the next one, and whether progress is moving. "Watch" only if progress has not moved for three months while the city is growing slowly (growth may be stalling just before an unlock).
+
+From progression.json (bands guessed, 2026-11-01): **watch** when `devTree.points` is 2 or more and an `affordable` node exists (free improvements left unspent), when `mapTiles.permitsAvailable` > 0 and the city has little free land left (growth.json / `plan_layout` shows hardly any open owned land), or when an extraction site's `concentrationPercent` is below 50 or its ore/oil `resourceLeft` will run out within a year at the current rate (compare `totalExtracted` between snapshots). Name what the next milestone unlocks and how much XP is missing. For a tile proposal compare `price` and `upkeepIncrease` with the city's monthly balance and say what the tile brings (`features`, `where`); a tile only pays off if the city will use it soon. Never "problem" on its own: progression only blocks growth when a needed service is still locked.
 
 ## 12. Disasters and emergencies
 Rate only when disasters.json `naturalDisastersOn` is true or something is happening. **problem** while buildings are on fire in several places, any `buildingsInDanger` or `floodedBuildings`, a weather event over the city, or destroyed buildings not yet rebuilt in numbers (more than 1 % of buildings); **watch** if disasters are on and the city has few shelter places for its population (services `disasterShelters`), no early warning building (`earlyWarningBuildings` 0), or the event journal shows a disaster in the last game months. Use the event journal's `casualties`, `damages` and `cityEffectChange` to say what the last disaster cost. Bands guessed.

@@ -221,6 +221,26 @@ namespace CityAssistant.Systems
                 return;
             }
 
+            if (request.Path == "/check/road-users")
+            {
+                if (!m_InGame || g == null)
+                {
+                    request.Status = 503;
+                    request.Body = Error("No city is open in the game.");
+                    return;
+                }
+                if (!float.TryParse(request.Query["x"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var rx)
+                    || !float.TryParse(request.Query["z"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var rz))
+                {
+                    request.Status = 400;
+                    request.Body = Error("Give x and z (world metres).");
+                    return;
+                }
+                request.Status = 200;
+                request.Body = LeftoverExports.RoadUsers(g, World, rx, rz).ToString();
+                return;
+            }
+
             request.Status = 404;
             request.Body = Error("Unknown path. Use /status, /live/<name>, /map/<grids|network|buildings|utilities|zones>, /check/districts or POST /act.");
         }

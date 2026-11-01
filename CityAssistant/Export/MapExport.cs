@@ -84,6 +84,12 @@ namespace CityAssistant.Export
             grids.Add("telecom", GameData.Safe("telecom", () =>
                 ReadGrid(world.GetExistingSystemManaged<TelecomCoverageSystem>(), 128, c => new float[] { c.m_SignalStrength, c.m_NetworkLoad },
                     "Telecom per cell: channels signal strength, network load (both 0-255). Network quality = min(1, signal / (127.5 + load)) (TelecomCoverage.SampleNetworkQuality)")));
+            // Natural resources left per cell (the Natural Resources view): base minus used, 256 x 256
+            // (NaturalResourceSystem.kTextureSize). City modifiers for ore/oil are not applied here.
+            grids.Add("naturalResources", GameData.Safe("naturalResources", () =>
+                ReadGrid(world.GetExistingSystemManaged<NaturalResourceSystem>(), NaturalResourceSystem.kTextureSize,
+                    c => new float[] { c.m_Fertility.m_Base - c.m_Fertility.m_Used, c.m_Ore.m_Base - c.m_Ore.m_Used, c.m_Oil.m_Base - c.m_Oil.m_Used, c.m_Fish.m_Base - c.m_Fish.m_Used },
+                    "Natural resources left per cell: channels fertility, ore, oil, fish (raw game amounts, base - used; 10000 = a full cell for fertility)")));
             grids.Add("surfaceWater", GameData.Safe("surfaceWater", () => SurfaceWater(world)));
             grids.Add("terrainHeight", GameData.Safe("terrainHeight", () => TerrainHeight(world)));
             o.Add("grids", grids);
@@ -208,6 +214,12 @@ namespace CityAssistant.Export
                 var coverage = new float[curves.Length * kCoverageServices * 2];
                 var density = new float[curves.Length];
                 var condition = new float[curves.Length];
+                var parking = new float[curves.Length * 3];
+                var noise = new float[curves.Length * 2];
+                LeftoverExports.ParkingLookups parkingLookups = default;
+                bool parkingOk = true;
+                try { parkingLookups = LeftoverExports.ParkingLookups.Create(world.GetExistingSystemManaged<CityAssistant.Systems.CityExportSystem>()); }
+                catch (Exception e) { parkingOk = false; Mod.log.Warn($"Road parking lookups failed: {e.Message}"); }
                 for (int i = 0; i < curves.Length; i++)
                 {
                     var b = curves[i].m_Bezier;
@@ -236,6 +248,23 @@ namespace CityAssistant.Export
                     else
                     {
                         condition[i] = -1f;
+                    }
+
+                    if (parkingOk)
+                    {
+                        try
+                        {
+                            parkingLookups.Street(entities[i], out var pParked, out var pGap, out var pFee);
+                            parking[i * 3] = pParked; parking[i * 3 + 1] = pGap; parking[i * 3 + 2] = pFee;
+                        }
+                        catch (Exception e) { parkingOk = false; Mod.log.Warn($"Road parking read failed: {e.Message}"); }
+                    }
+                    // Traffic noise and air pollution the road gives off: accumulation x the road type's factors
+                    // (NetPollutionSystem; x = noise, y = air).
+                    if (em.HasComponent<Game.Net.Pollution>(entities[i]) && em.HasComponent<NetPollutionData>(prefab))
+                    {
+                        var acc = em.GetComponentData<Game.Net.Pollution>(entities[i]).m_Accumulation * em.GetComponentData<NetPollutionData>(prefab).m_Factors;
+                        noise[i * 2] = acc.x; noise[i * 2 + 1] = acc.y;
                     }
 
                     streetOfRoad[i] = -1;
@@ -273,6 +302,10 @@ namespace CityAssistant.Export
                     { "densityLayout", "per road 1 float32: residents + jobs of the buildings on it per metre of road (Game.Net.Density, NetEdgeDensitySystem); -1 = none" },
                     { "condition", Base64(condition) },
                     { "conditionLayout", "per road 1 float32: road condition % as the road's info panel shows it (100 = new, falls with wear from time and heavy traffic; game code RoadSection, NetCondition); -1 = no data" },
+                    { "parking", Base64(parking) },
+                    { "parkingLayout", "per road 3 float32: parked cars on the street, longest free kerb stretch in metres (-1 = no street parking; below 5 = full), average parking fee" },
+                    { "pollution", Base64(noise) },
+                    { "pollutionLayout", "per road 2 float32: traffic noise, traffic air pollution the road gives off (NetPollutionSystem: accumulation x road type factors; game units)" },
                     { "suitability", suitability },
                 };
             }

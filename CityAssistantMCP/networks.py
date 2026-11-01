@@ -29,7 +29,7 @@ COVERAGE_BUILDINGS = {
     "healthcare": ("Hospital", "Clinic"), "fire": ("Fire",), "police": ("Police",), "park": ("Park", "Plaza", "Garden"),
     "post": ("Post",), "education": ("School", "College", "University"), "shelter": ("Shelter",), "welfare": ("Welfare",),
 }
-LAYERS = {"traffic": "Traffic flow", "road-condition": "Road condition", "electricity": "Electricity network", "water": "Fresh water network", "sewage": "Sewage network"}
+LAYERS = {"traffic": "Traffic flow", "road-condition": "Road condition", "parking": "Street parking (free kerb space)", "road-noise": "Traffic noise from roads", "electricity": "Electricity network", "water": "Fresh water network", "sewage": "Sewage network"}
 LAYERS.update({f"coverage-{s}": f"{s.capitalize()} coverage" for s in COVERAGE})
 TIMES = ["00-06 h", "06-12 h", "12-18 h", "18-24 h"]
 
@@ -60,6 +60,22 @@ def road_condition(m: maps.MapData) -> np.ndarray:
     if a is None:
         raise ValueError("No road condition data in this export (needs the mod version of 2026-10-31 or later).")
     return a[:, 0]
+
+
+def parking(m: maps.MapData) -> np.ndarray:
+    """Per road: parked cars, longest free kerb stretch in metres (-1 = no street parking), average fee."""
+    a = _road_array(m, "parking", 3)
+    if a is None:
+        raise ValueError("No street parking data in this export (needs the mod version of 2026-11-01 or later).")
+    return a
+
+
+def road_pollution(m: maps.MapData) -> np.ndarray:
+    """Per road: traffic noise and traffic air pollution it gives off (game units)."""
+    a = _road_array(m, "pollution", 2)
+    if a is None:
+        raise ValueError("No road pollution data in this export (needs the mod version of 2026-11-01 or later).")
+    return a
 
 
 def traffic(m: maps.MapData) -> np.ndarray:
@@ -131,6 +147,28 @@ def draw(ax, fig, m: maps.MapData, layer: str, x0: float, x1: float, z0: float, 
         ax.add_collection(col)
         bar = fig.colorbar(col, ax=ax, fraction=0.035, pad=0.02)
         bar.set_label("Traffic flow (0 = jammed, 1 = free; worse direction). Width = traffic volume")
+        return
+
+    if layer == "parking":
+        pk = parking(m)
+        has = keep & (pk[:, 1] >= 0)
+        gap = np.clip(pk[:, 1], 0, 30)
+        ax.add_collection(LineCollection(lines[keep & ~has], colors="#bbbbbb", linewidths=0.4, zorder=3))
+        col = LineCollection(lines[has], array=gap[has], cmap="RdYlGn", linewidths=np.where(pk[:, 2] > 0, 2.6, 1.4)[has], zorder=3)
+        col.set_clim(0, 30)
+        ax.add_collection(col)
+        bar = fig.colorbar(col, ax=ax, fraction=0.035, pad=0.02)
+        bar.set_label("Longest free kerb stretch, m (red below 5 = street full; thick = paid; grey = no street parking)")
+        return
+
+    if layer == "road-noise":
+        n = road_pollution(m)[:, 0]
+        top = float(np.percentile(n[keep], 99)) if keep.any() and n[keep].max() > 0 else 1.0
+        col = LineCollection(lines[keep], array=np.minimum(n[keep], top), cmap="RdPu", linewidths=np.where(m.road_major, 2.2, 1.2)[keep], zorder=3)
+        col.set_clim(0, max(top, 1e-6))
+        ax.add_collection(col)
+        bar = fig.colorbar(col, ax=ax, fraction=0.035, pad=0.02)
+        bar.set_label("Traffic noise the road gives off (game units)")
         return
 
     if layer == "road-condition":
@@ -272,6 +310,30 @@ def hotspots(m: maps.MapData, layer: str, top: int = 10, area: str = "") -> list
                 "worstTime": TIMES[worst], "speedShareAtWorstTime": round(float(t[i, 2 + worst]), 2), "volume": round(float(volume[i])),
             })
             seen.add(street)
+        return result
+
+    if layer in ("parking", "road-noise"):
+        if layer == "parking":
+            pk = parking(m)
+            # Full streets (no free stretch of 5 m) with the most parked cars first.
+            score = np.where((pk[:, 1] >= 0) & (pk[:, 1] < 5) & in_area, 1 + pk[:, 0], -1)
+        else:
+            n = road_pollution(m)
+            score = np.where(in_area, n[:, 0], -1)
+        result = []
+        for i in np.argsort(-score):
+            if score[i] <= 0 or len(result) >= top:
+                break
+            x, z = (float(v) for v in mids[i])
+            if any(math.hypot(x - r["position"][0], z - r["position"][1]) < 300 for r in result):
+                continue
+            row = {"where": m.describe(x, z), "street": m.streets[m.road_street[i]] if m.road_street[i] >= 0 else None,
+                   "square": maps.square_of(x, z), "position": [round(x), round(z)]}
+            if layer == "parking":
+                row.update({"parked": int(pk[i, 0]), "longestFreeStretchM": round(float(pk[i, 1]), 1), "fee": round(float(pk[i, 2]), 1)})
+            else:
+                row.update({"noise": round(float(n[i, 0]), 1), "airPollution": round(float(n[i, 1]), 1)})
+            result.append(row)
         return result
 
     if layer == "road-condition":
