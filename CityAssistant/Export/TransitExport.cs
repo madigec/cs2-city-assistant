@@ -64,6 +64,7 @@ namespace CityAssistant.Export
                         { "stops", line.stops },
                         { "vehicles", line.vehicles },
                         { "usagePercent", Math.Round(100.0 * line.usage, 1) },
+                        { "onBoard", line.cargo },
                         { "notEnoughVehicles", notEnough },
                         { "vehicleInterval", Math.Round(t.m_VehicleInterval, 1) },
                         { "ticketPrice", line.isCargo ? null : (object)(int)t.m_TicketPrice },

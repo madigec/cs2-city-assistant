@@ -42,6 +42,7 @@ namespace CityAssistant.Export
             o.Add("efficiencyByZone", GameData.Safe("efficiencyByZone", () => ServiceBuildingsExport.Zoned(g)));
             o.Add("production", GameData.Safe("production", () => EconomyDetailsExport.Production(world)));
             o.Add("commuters", GameData.Safe("commuters", () => EconomyDetailsExport.Commuters(g)));
+            o.Add("tourismDetails", GameData.Safe("tourismDetails", () => Wave3Exports.Tourism(g)));
             return o;
         }
 
@@ -73,6 +74,7 @@ namespace CityAssistant.Export
         {
             var o = g.Header("environment", trigger);
             o.Add("pollution", GameData.Safe("pollution", () => InfoviewReader.Read<PollutionInfoviewUISystem>(world)));
+            o.Add("climate", GameData.Safe("climate", () => Wave3Exports.Climate(world)));
             return o;
         }
 
@@ -92,6 +94,8 @@ namespace CityAssistant.Export
                         return entry.Value;
                 return null;
             }));
+            o.Add("dailyLife", GameData.Safe("dailyLife", () => Wave3Exports.DailyLife(g)));
+            o.Add("chirper", GameData.Safe("chirper", () => Wave3Exports.Chirper(g, world)));
             return o;
         }
 

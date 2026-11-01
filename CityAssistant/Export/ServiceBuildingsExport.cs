@@ -164,7 +164,17 @@ namespace CityAssistant.Export
                     var loads = new List<object>();
                     int vehicleCapacity = 0;
                     if (Combined<SchoolData>(em, prefab, e, out var school))
-                        loads.Add(Load("students", em.HasBuffer<Student>(e) ? em.GetBuffer<Student>(e, true).Length : 0, school.m_StudentCapacity));
+                    {
+                        var l = Load("students", em.HasBuffer<Student>(e) ? em.GetBuffer<Student>(e, true).Length : 0, school.m_StudentCapacity);
+                        if (em.HasComponent<Game.Buildings.School>(e))
+                        {
+                            var sc = em.GetComponentData<Game.Buildings.School>(e);
+                            // The building panel shows this x 12 as months (0.5 = "6 months"; EducationSection shows 0.5 when 0).
+                            l.Add("averageGraduationMonths", Math.Round((sc.m_AverageGraduationTime > 0f ? sc.m_AverageGraduationTime : 0.5f) * 12, 1));
+                            l.Add("dropoutPercent", Math.Round(100.0 * sc.m_AverageFailProbability, 1));
+                        }
+                        loads.Add(l);
+                    }
                     if (Combined<HospitalData>(em, prefab, e, out var hospital))
                     {
                         loads.Add(Load("patients", em.HasBuffer<Patient>(e) ? em.GetBuffer<Patient>(e, true).Length : 0, hospital.m_PatientCapacity));
@@ -214,15 +224,27 @@ namespace CityAssistant.Export
                     if (em.HasBuffer<OwnedVehicle>(e) || vehicleCapacity > 0)
                     {
                         int owned = 0, parked = 0;
+                        var byType = new SortedDictionary<string, int>();
                         if (em.HasBuffer<OwnedVehicle>(e))
                         {
                             var vehicles = em.GetBuffer<OwnedVehicle>(e, true);
                             owned = vehicles.Length;
                             for (int v = 0; v < vehicles.Length; v++)
-                                if (em.HasComponent<ParkedCar>(vehicles[v].m_Vehicle) || em.HasComponent<ParkedTrain>(vehicles[v].m_Vehicle))
+                            {
+                                var ve = vehicles[v].m_Vehicle;
+                                if (em.HasComponent<ParkedCar>(ve) || em.HasComponent<ParkedTrain>(ve))
+                                {
                                     parked++;
+                                    continue;
+                                }
+                                string vt = em.HasComponent<PrefabRef>(ve) ? g.Prefabs.GetPrefabName(em.GetComponentData<PrefabRef>(ve).m_Prefab) : "?";
+                                byType.TryGetValue(vt, out var nv);
+                                byType[vt] = nv + 1;
+                            }
                         }
-                        o.Add("vehicles", new JsonObject { { "capacity", vehicleCapacity }, { "owned", owned }, { "out", owned - parked } });
+                        var outByType = new JsonObject();
+                        foreach (var kv in byType) outByType.Add(kv.Key, kv.Value);
+                        o.Add("vehicles", new JsonObject { { "capacity", vehicleCapacity }, { "owned", owned }, { "out", owned - parked }, { "outByType", outByType } });
                     }
                     if (em.HasBuffer<Game.Areas.ServiceDistrict>(e))
                     {

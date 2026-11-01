@@ -56,7 +56,10 @@ Added with the 2026-10-31 exports (bands are guesses, not from the game):
 
 **Company health** (economy.json `companiesByProduct`, added 2026-10-31; bands guessed): **watch** when a product with 5+ companies has `profitPercent` below 50 (losing money on average), staffing below 70 % of `maxWorkers`, or a `leaveChancePerGameDayPercent` above 20 % (companies of that product will keep leaving). Before proposing any product or zone tax change, read that product's row: above 10 % tax, every point raises the leave chance (finance.md, "Taxes and companies leaving").
 
-## 4. Public services
+## 4. Trade and tourism
+Informational unless something stands out (bands guessed): **watch** if a product the city's own industry needs is mostly imported while the city could make it (economy.json `production`: `ImportExport` strongly negative, `productionCapacity` low - an opening for that industry), if `commuters.commuterHouseholds` is above 10 % of households (jobs the city's education does not cover), or if `tourismDetails.hotelRoomsUsedPercent` is above 95 (tourists leave when no room is free); **problem** only when trade costs show up as a money problem in Finance. Name the biggest imports and exports, the top attractions by `where`, and the tourism weather effect.
+
+## 5. Public services
 Use services.json, one sub-rating per service; the worst sets the domain status. Also note any service with `budgetPercent` below 100 (efficiency is reduced) or above 100 (paying extra).
 
 | Status | Rule |
@@ -69,7 +72,7 @@ Skip a service whose numbers are all 0 in a warm-up export (seen for post in Meg
 
 **Per building** (services.json `buildingDetails`, added 2026-11-01; bands guessed): **problem** if any school, hospital or jail/prison has `load.percent` above 110, a cemetery or landfill above 95, or a service's `averageEfficiencyPercent` below 60; **watch** if any of those is above 90 (cemetery / landfill above 80), a service's average efficiency is below 80, or most buildings of a service have all their vehicles `out` (calls wait for a free vehicle). Name the building by its `where`, and the main reason from `losses` / `biggestLosses` (e.g. NotEnoughEmployees -> education or wages; ServiceBudget -> budget slider; ElectricitySupply -> power). City totals can look fine while one building is overloaded: always check the list.
 
-## 5. Utilities
+## 6. Utilities
 Reserve = (production or capacity - consumption) / consumption.
 
 | Status | Rule |
@@ -80,18 +83,20 @@ Reserve = (production or capacity - consumption) / consumption.
 
 Also (utilities.json `details`, added 2026-11-01; guessed): **problem** if `dirtyTapWater.dirtyPercent` above 5; **watch** above 1, or any pump `pumpingDirtyWater` (move the pump away from sewage outlets and polluted ground, or fix the pollution). Power plants far below capacity while power is short point at their reason: wind, sun, water depth or missing fuel.
 
-## 6. Road traffic
+## 7. Road traffic
 traffic.json covers the city-wide flow chart, parking, bicycles, accidents now, through traffic and road condition; jams at places come from `map_hotspots("traffic")` and the Traffic jam icons (problems). Rate **watch** if `parkingAvailability` or `bikeParkingAvailability` is below 0, if `roadCondition.segmentsBelow50Percent` is above 10 % of segments (no or too few road maintenance depots), or if `throughTraffic.throughTrafficPercent` is above 30 % (outside traffic crowding city roads; a bypass may help). Rate **problem** if more than 25 % of segments are below 50 % condition. Bands are guesses. `accidents` is a moment, not a rate: mention a spot only when the Traffic accident icons cluster there.
 
-## 7. Public transport
+## 8. Public transport
 transport.json: report per transport type the lines and passengers. **Watch** if a type has lines but almost no passengers (money spent for little use); otherwise informational until the passenger numbers are verified.
 
 Per line (transport.json `lines`, added 2026-11-01; guessed): **watch** if any line has `notEnoughVehicles` (no depot or depot full), a line's `usagePercent` stays above 90 (crowded: more vehicles), or `averageWaitSeconds` is much higher than on the other lines of its type; **problem** if a quarter of the lines are short of vehicles. A line with very low usage and many vehicles costs upkeep for little: suggest fewer vehicles or a new route.
 
-## 8. Environment
+## 9. Environment
 environment.json gauges. Until their scale is verified: **watch** if a pollution type appears among the top negative `happinessFactors` (wellbeing.json); **problem** if it is the strongest negative factor. Otherwise fine.
 
-## 9. Citizens and wellbeing
+## 10. Citizens and wellbeing
+Also (wellbeing.json `dailyLife`, added 2026-11-01): the share of residents per happiness word (Depressed / Sad are the ones who may leave or turn to crime; leaving is almost zero above 30 well-being), `weakHealth`, `overqualifiedPercent` (above 25 %: jobs below the city's education - more offices / high-tech industry would fit), commute times compared over months. Chirper (`chirper.latest`) only as colour.
+
 Happiness (wellbeing.json `averageHappiness`) and health (services.json `averageHealth`) use a 0-100 scale where 50 is neutral. Name the top two negative `happinessFactors` as the main causes.
 
 | Status | Rule |
@@ -100,5 +105,8 @@ Happiness (wellbeing.json `averageHappiness`) and health (services.json `average
 | watch | either below 50, or happiness fell 5+ points since last month |
 | fine | both >= 50 |
 
-## 10. Progression
+## 11. Progression
 Informational: report milestone, progress to the next one, and whether progress is moving. "Watch" only if progress has not moved for three months while the city is growing slowly (growth may be stalling just before an unlock).
+
+## 12. Disasters and emergencies
+Rate only when disasters.json `naturalDisastersOn` is true or something is happening. **problem** while buildings are on fire in several places, any `buildingsInDanger` or `floodedBuildings`, a weather event over the city, or destroyed buildings not yet rebuilt in numbers (more than 1 % of buildings); **watch** if disasters are on and the city has few shelter places for its population (services `disasterShelters`), no early warning building (`earlyWarningBuildings` 0), or the event journal shows a disaster in the last game months. Use the event journal's `casualties`, `damages` and `cityEffectChange` to say what the last disaster cost. Bands guessed.

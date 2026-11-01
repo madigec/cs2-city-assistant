@@ -1,6 +1,6 @@
 ---
 name: cs2-city-assistant
-description: City advisor for Cities Skylines II. Reads the JSON exports written by the player's CityAssistant mod (overview, finance, services, utilities, growth, economy, traffic, transport, environment and wellbeing files, plus history) plus the city journal, rates each city domain fine / watch / problem, and writes a ranked report with concrete recommendations. Use this skill whenever the user asks how their CS2 / Cities Skylines 2 city is doing, wants a city report, status check or review, asks about their city budget, taxes, loans, deficit, income, expenses, service budgets or fees, population, demand, unemployment, electricity or water, services, jobs, traffic, public transport, pollution or happiness, asks "what should I do next" in their city, names one of their cities, mentions the city journal or charter, or points at a CityAssistant / ModsData folder - even if they do not say "skill" or "report". Works for any city the mod has exported, each with its own journal and charter.
+description: City advisor for Cities Skylines II. Reads the JSON exports written by the player's CityAssistant mod (overview, finance, services, utilities, growth, economy, traffic, transport, environment, wellbeing, problems, disasters and statistics files, plus history) plus the city journal, rates each city domain fine / watch / problem, and writes a ranked report with concrete recommendations. Use this skill whenever the user asks how their CS2 / Cities Skylines 2 city is doing, wants a city report, status check or review, asks about their city budget, taxes, loans, deficit, income, expenses, service budgets or fees, population, demand, unemployment, electricity or water, services, jobs, traffic, public transport, pollution or happiness, asks "what should I do next" in their city, names one of their cities, mentions the city journal or charter, or points at a CityAssistant / ModsData folder - even if they do not say "skill" or "report". Works for any city the mod has exported, each with its own journal and charter.
 ---
 
 # CS2 City Assistant
@@ -50,10 +50,12 @@ If the tools are not available, read the files directly. Exports live in the mod
 ...\Cities Skylines II\ModsData\CityAssistant\cities\<City name>\
     overview.json          latest export (layer 1)
     finance.json           latest finance detail (layer 2, Finance domain)
-    services.json          public services (domain 4)        utilities.json   power, water, sewage (5)
-    growth.json            demand + its reasons, land (2)    economy.json     jobs, companies, trade (3)
-    traffic.json           traffic flow, parking (6)         transport.json   public transport lines (7)
-    environment.json       pollution (8)                     wellbeing.json   happiness + factors (9)
+    services.json          public services (domain 5)        utilities.json   power, water, sewage (6)
+    growth.json            demand + its reasons, land (2)    economy.json     jobs, companies, trade, tourism (3, 4)
+    traffic.json           traffic flow, parking (7)         transport.json   public transport lines (8)
+    environment.json       pollution, weather (9)            wellbeing.json   happiness, daily life, Chirper (10)
+    disasters.json         fires, destroyed buildings, weather events, event journal (12)
+    statistics.json        the game's own history graphs, one value per month (all domains)
     districts.json         the same figures per district the player has drawn (residents, happiness, jobs, services, policies)
     problems.json          the game's warning icons: count per icon type and where each one is
     (services, economy, transport, finance and utilities also carry per-building, per-resource, per-line and
@@ -116,7 +118,7 @@ Keep it skimmable: the player should know the state of the city from the first s
 | # | Domain | Status | One line |
 |---|--------|--------|----------|
 | 1 | Finance | 🔴 problem / 🟡 watch / 🟢 fine / ⚪ no data | <the key number and why> |
-... all ten domains, in order ...
+... all twelve domains, in order (leave out Disasters when natural disasters are off and nothing happened) ...
 
 ## Top issues
 ### Now
@@ -136,7 +138,7 @@ For each recommendation:
 Questions only the player can answer (charter gaps, trade-offs).
 ```
 
-The ten domains, in order: 1 Finance, 2 Growth and land use, 3 Economy and industry, 4 Public services, 5 Utilities, 6 Road traffic, 7 Public transport, 8 Environment, 9 Citizens and wellbeing, 10 Progression. All ten domains are exported (one file each, see the list above). Traffic covers only city-wide flow and parking, not individual junctions: if the player describes a jam somewhere, reason from what they tell you and say it is not backed by data.
+The twelve domains, in order (approved by the player 2026-10-31): 1 Finance, 2 Growth and land use, 3 Economy and industry, 4 Trade and tourism, 5 Public services, 6 Utilities, 7 Road traffic, 8 Public transport, 9 Environment, 10 Citizens and wellbeing, 11 Progression, 12 Disasters and emergencies. Above the status board sits the **Problems** line (the game's warning icons, see step 3). Trade and tourism reads economy.json (`trade`, `production` imports/exports, `commuters`, `tourism`, `tourismDetails`). Disasters and emergencies reads disasters.json: show it only when `naturalDisastersOn` is true or something is happening (fires, destroyed buildings, weather events); when anything is happening, put it first. Jams at places come from `map_hotspots("traffic")` and the Traffic jam icons; junction-level detail beyond that is not in the data.
 
 ## Principles
 

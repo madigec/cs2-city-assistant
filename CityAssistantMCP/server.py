@@ -40,7 +40,7 @@ DATA_DIR = Path(
 # Same order as the mod's ExportCatalog.
 DOMAINS = [
     "overview", "finance", "services", "utilities", "growth", "economy",
-    "traffic", "transport", "environment", "wellbeing", "districts", "problems",
+    "traffic", "transport", "environment", "wellbeing", "districts", "problems", "disasters", "statistics",
 ]
 HOURS = ["00h", "06h", "12h", "18h"]
 
@@ -187,7 +187,9 @@ def list_cities() -> list[dict[str, Any]]:
 @mcp.tool()
 def get_city_data(domain: str, city: str = "") -> dict[str, Any]:
     """Current numbers for one domain: overview, finance, services, utilities, growth, economy, traffic,
-    transport, environment, wellbeing, districts or problems. problems = the game's warning icons: count
+    transport, environment, wellbeing, districts, problems, disasters (fires, destroyed buildings, weather
+    events, the event journal; whether natural disasters are on) or statistics (the game's own history of 60+
+    statistics, one value per month, also from before the mod). problems = the game's warning icons: count
     per icon type, the districts with most of them and the worst places in street names. services includes
     every service building with its load, vehicles, efficiency and a 'where'; transport every line; economy
     production per resource and companies per product; finance tax per product, the Services tab and
@@ -202,23 +204,33 @@ def get_city_data(domain: str, city: str = "") -> dict[str, Any]:
         except ToolError:
             m = None
         data = problems.digest(data, m)
-    if domain == "services":
+    if domain in ("services", "economy", "disasters"):
         _add_where(data, city)
     return data
 
 
 def _add_where(data: dict[str, Any], city: str) -> None:
-    """Gives each service building in services.json buildingDetails a 'where' in street names."""
+    """Gives service buildings, top attractions and weather events a 'where' in street names."""
+    lists = []
     details = data.get("buildingDetails")
-    if not isinstance(details, dict) or not isinstance(details.get("buildings"), list):
+    if isinstance(details, dict) and isinstance(details.get("buildings"), list):
+        lists.append(details["buildings"])
+    tourism = data.get("tourismDetails")
+    if isinstance(tourism, dict) and isinstance(tourism.get("topAttractions"), list):
+        lists.append(tourism["topAttractions"])
+    now = data.get("now")
+    if isinstance(now, dict) and isinstance(now.get("weatherEvents"), list):
+        lists.append(now["weatherEvents"])
+    if not lists:
         return
     try:
         m = _map_data(city)
     except ToolError:
         return
-    for b in details["buildings"]:
-        if "x" in b and "z" in b:
-            b["where"] = m.describe(float(b["x"]), float(b["z"]))
+    for items in lists:
+        for b in items:
+            if isinstance(b, dict) and "x" in b and "z" in b:
+                b["where"] = m.describe(float(b["x"]), float(b["z"]))
 
 
 def _domain_data(domain: str, city: str) -> dict[str, Any]:
