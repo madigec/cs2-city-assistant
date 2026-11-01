@@ -29,7 +29,7 @@ COVERAGE_BUILDINGS = {
     "healthcare": ("Hospital", "Clinic"), "fire": ("Fire",), "police": ("Police",), "park": ("Park", "Plaza", "Garden"),
     "post": ("Post",), "education": ("School", "College", "University"), "shelter": ("Shelter",), "welfare": ("Welfare",),
 }
-LAYERS = {"traffic": "Traffic flow", "electricity": "Electricity network", "water": "Fresh water network", "sewage": "Sewage network"}
+LAYERS = {"traffic": "Traffic flow", "road-condition": "Road condition", "electricity": "Electricity network", "water": "Fresh water network", "sewage": "Sewage network"}
 LAYERS.update({f"coverage-{s}": f"{s.capitalize()} coverage" for s in COVERAGE})
 TIMES = ["00-06 h", "06-12 h", "12-18 h", "18-24 h"]
 
@@ -52,6 +52,14 @@ def _road_array(m: maps.MapData, key: str, width: int) -> np.ndarray | None:
         return None
     a = maps._floats(raw)
     return a.reshape(-1, width) if a.size == len(m.roads) * width else None
+
+
+def road_condition(m: maps.MapData) -> np.ndarray:
+    """Road condition % per road as the road panel shows it (100 = new), -1 = no data."""
+    a = _road_array(m, "condition", 1)
+    if a is None:
+        raise ValueError("No road condition data in this export (needs the mod version of 2026-10-31 or later).")
+    return a[:, 0]
 
 
 def traffic(m: maps.MapData) -> np.ndarray:
@@ -123,6 +131,17 @@ def draw(ax, fig, m: maps.MapData, layer: str, x0: float, x1: float, z0: float, 
         ax.add_collection(col)
         bar = fig.colorbar(col, ax=ax, fraction=0.035, pad=0.02)
         bar.set_label("Traffic flow (0 = jammed, 1 = free; worse direction). Width = traffic volume")
+        return
+
+    if layer == "road-condition":
+        c = road_condition(m)
+        has = keep & (c >= 0)
+        ax.add_collection(LineCollection(lines[keep & ~has], colors="#bbbbbb", linewidths=0.4, zorder=3))
+        col = LineCollection(lines[has], array=c[has], cmap="RdYlGn", linewidths=np.where(m.road_major, 2.2, 1.2)[has], zorder=3)
+        col.set_clim(0, 100)
+        ax.add_collection(col)
+        bar = fig.colorbar(col, ax=ax, fraction=0.035, pad=0.02)
+        bar.set_label("Road condition % (as the road's info panel shows it; 100 = new)")
         return
 
     if layer.startswith("coverage-"):
@@ -253,6 +272,23 @@ def hotspots(m: maps.MapData, layer: str, top: int = 10, area: str = "") -> list
                 "worstTime": TIMES[worst], "speedShareAtWorstTime": round(float(t[i, 2 + worst]), 2), "volume": round(float(volume[i])),
             })
             seen.add(street)
+        return result
+
+    if layer == "road-condition":
+        c = road_condition(m)
+        volume = traffic(m)[:, 6] if _road_array(m, "traffic", 7) is not None else np.ones(len(c))
+        # Worst first, busy roads ahead of quiet ones with the same wear.
+        score = np.where((c >= 0) & in_area, (100 - c) * (1 + np.sqrt(np.maximum(volume, 0)) / max(1.0, float(np.sqrt(np.maximum(volume, 0)).max()))), -1)
+        result = []
+        for i in np.argsort(-score):
+            if score[i] <= 0 or len(result) >= top:
+                break
+            x, z = (float(v) for v in mids[i])
+            if any(math.hypot(x - r["position"][0], z - r["position"][1]) < 300 for r in result):
+                continue
+            result.append({"where": m.describe(x, z), "street": m.streets[m.road_street[i]] if m.road_street[i] >= 0 else None,
+                           "square": maps.square_of(x, z), "position": [round(x), round(z)],
+                           "conditionPercent": round(float(c[i]), 1), "trafficVolume": round(float(volume[i]))})
         return result
 
     if layer.startswith("coverage-"):

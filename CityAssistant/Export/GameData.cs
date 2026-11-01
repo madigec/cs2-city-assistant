@@ -55,6 +55,14 @@ namespace CityAssistant.Export
         public readonly EntityQuery MapTiles;
         /// <summary>Warning icons (notifications) over buildings, roads and vehicles.</summary>
         public readonly EntityQuery Icons;
+        /// <summary>Companies renting a building (shops, industry, offices, warehouses, extractors).</summary>
+        public readonly EntityQuery Companies;
+        /// <summary>Households on their way out of the city, with the game's reason.</summary>
+        public readonly EntityQuery MovingAwayHouseholds;
+        /// <summary>Cars and trucks on the move (not parked), with their owner.</summary>
+        public readonly EntityQuery MovingCars;
+        /// <summary>Accident and crime sites.</summary>
+        public readonly EntityQuery AccidentSites;
 
         public GameData(World world)
         {
@@ -117,6 +125,26 @@ namespace CityAssistant.Export
             MapTiles = EntityManager.CreateEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<MapTile>(), ComponentType.ReadOnly<Area>() },
+                None = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
+            });
+            Companies = EntityManager.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<Game.Companies.CompanyData>(), ComponentType.ReadOnly<PrefabRef>(), ComponentType.ReadOnly<PropertyRenter>() },
+                None = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
+            });
+            MovingAwayHouseholds = EntityManager.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<Game.Citizens.Household>(), ComponentType.ReadOnly<Game.Agents.MovingAway>() },
+                None = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
+            });
+            MovingCars = EntityManager.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<Game.Vehicles.Car>(), ComponentType.ReadOnly<Owner>() },
+                None = new[] { ComponentType.ReadOnly<Game.Vehicles.ParkedCar>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
+            });
+            AccidentSites = EntityManager.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<Game.Events.AccidentSite>() },
                 None = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
             });
             Icons = EntityManager.CreateEntityQuery(new EntityQueryDesc

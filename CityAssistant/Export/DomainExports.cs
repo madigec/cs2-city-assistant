@@ -23,6 +23,9 @@ namespace CityAssistant.Export
             o.Add("landValue", GameData.Safe("landValue", () => InfoviewReader.Read<LandValueInfoviewUISystem>(world)));
             o.Add("buildingLevels", GameData.Safe("buildingLevels", () => InfoviewReader.Read<LevelInfoviewUISystem>(world)));
             o.Add("wealth", GameData.Safe("wealth", () => InfoviewReader.Read<WealthInfoviewUISystem>(world)));
+            o.Add("moveAway", GameData.Safe("moveAway", () => HousingExport.MoveAway(g)));
+            o.Add("homes", GameData.Safe("homes", () => HousingExport.Homes(world)));
+            o.Add("zonedBuildings", GameData.Safe("zonedBuildings", () => HousingExport.Buildings(g)));
             return o;
         }
 
@@ -35,6 +38,7 @@ namespace CityAssistant.Export
             o.Add("trade", GameData.Safe("trade", () => InfoviewReader.Read<OutsideConnectionsInfoviewUISystem>(world)));
             o.Add("naturalResources", GameData.Safe("naturalResources", () => InfoviewReader.Read<NaturalResourcesInfoviewUISystem>(world)));
             o.Add("tourism", GameData.Safe("tourism", () => InfoviewReader.Read<TourismInfoviewUISystem>(world)));
+            o.Add("companiesByProduct", GameData.Safe("companiesByProduct", () => CompaniesExport.Build(g)));
             return o;
         }
 
@@ -45,6 +49,10 @@ namespace CityAssistant.Export
             o.Add("traffic", GameData.Safe("traffic", () => InfoviewReader.Read<TrafficInfoviewUISystem>(world)));
             o.Add("roadsAndParking", GameData.Safe("roadsAndParking", () => InfoviewReader.Read<RoadsInfoviewUISystem>(world)));
             o.Add("bikes", GameData.Safe("bikes", () => InfoviewReader.Read<BikesInfoviewUISystem>(world)));
+            o.Add("bicycles", GameData.Safe("bicycles", () => TrafficExtrasExport.Bicycles(world)));
+            o.Add("accidents", GameData.Safe("accidents", () => TrafficExtrasExport.Accidents(g)));
+            o.Add("throughTraffic", GameData.Safe("throughTraffic", () => TrafficExtrasExport.ThroughTraffic(g)));
+            o.Add("roadCondition", GameData.Safe("roadCondition", () => TrafficExtrasExport.RoadCondition(g)));
             return o;
         }
 

@@ -48,7 +48,20 @@ Work down the list; stop when the cause is clear, but mention any second cause.
 | Remove or downsize an oversized facility | Player | - | Saves upkeep at once | Check reserves and coverage first |
 | Grow the tax base: zone what demand asks for | Player zones | - | Several months | Needs services and jobs to follow |
 
-Co-pilot note: tax rates, service budgets and loans are the planned future co-pilot actions; for now the player applies them.
+### Taxes and companies leaving
+
+Source: game code (`CompanyMoveAwaySystem`, `CompanyUtils.GetCompanyMoveAwayChance`, 1.6.1f1), not yet observed in game. Shops, industry and offices (not extractors or warehouses) roll a chance to leave the city 16 times per game day (one day = one month on the calendar). The chance per roll is (product tax - 10) x 2.5 %, rounded down, plus 5 % while the building shows "Lack of Labor". At 10 % tax or less it is 0, so only bankruptcy makes companies leave. Above 10 % it adds up fast:
+
+| Product tax | Chance per roll | Chance to leave within a game day (month) |
+|---|---|---|
+| 10 % or less | 0 | 0 (bankruptcy only) |
+| 11 % | 2 % | about 28 % |
+| 12 % | 5 % | about 56 % |
+| 14 % | 10 % | about 81 % |
+
+New companies replace them only while that zone's demand allows it, and taxes are one of the demand factors. So a commercial, industrial or office tax above 10 % trades steady companies for higher income per company. economy.json `companiesByProduct` shows each product's current tax, its leave chance and how many companies are moving away now. Check it before proposing a tax above 10 %, and say this trade-off plainly. Residential tax does not use this rule.
+
+Co-pilot note: tax rates (including per product), service budgets, fees, the loan and city policies can be changed by the co-pilot after the player's yes.
 
 ### Estimating what a new building will cost
 The export has no building prices or per-building upkeep. Don't fill the gap with prices from memory: game balance changes between versions, and a remembered figure presented in a table looks like data. (In testing, an answer built on remembered prices of 300,000-450,000 per station concluded two stations would bankrupt Pedoburg, while the city's own data showed two buildings had just cost about 74,000.) Instead:
@@ -64,4 +77,4 @@ The export has no building prices or per-building upkeep. Don't fill the gap wit
 ## 7. Data used
 `finance.json`: summary, income, expenses, loan, taxes, serviceFees, serviceBudgets. `overview.json`: population (for per-capita), unemploymentRate, demand, electricity/water (for import/export context). `history\`: same files for previous months.
 
-Wished for in a later mod version: tax per product, per-building upkeep, the game's fee defaults, loan term and maximum.
+Wished for in a later mod version: per-building upkeep, the game's fee defaults, loan term and maximum.

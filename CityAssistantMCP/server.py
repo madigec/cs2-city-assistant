@@ -403,7 +403,7 @@ def get_map(layer: str = "base", area: str = "", city: str = "", mark_sources: b
     groundwater-pollution, land-value, population, wind or telecom (internet quality; the game's Telecom panel
     has no numbers, this is the coverage map behind it) (grids); traffic, electricity, water, sewage, or
     coverage-healthcare / -fire / -police / -park / -post / -education / -shelter / -welfare (drawn on the
-    roads and lines); zoning (zoned cells by type, built or empty, free roadside land, tiles not owned);
+    roads and lines); road-condition (wear, as the road panel shows it); zoning (zoned cells by type, built or empty, free roadside land, tiles not owned);
     problems (the game's warning icons as dots, one colour per type) or problems:<type> for one icon type
     (type name or in-game title, as get_city_data('problems') lists them). Polluting buildings are marked on pollution layers; wind arrows on air and wind;
     bottlenecks and buildings short of power or water on the utility layers. 'area' zooms in: one tile
@@ -429,7 +429,7 @@ def map_hotspots(layer: str, top: int = 10, area: str = "", city: str = "") -> d
     homes and households within 300 m, the wind, and the strongest polluting buildings within 2 km.
     problems: places with the most warning icons (priority Problem and up) and the mix of icon types there.
     telecom: places where most households lose internet happiness, plus a city-wide 'summary' (share of
-    households below the happiness baseline) - the way to judge internet service. traffic: the most jammed busy roads with their worst time of day. coverage-<service>: places where many
+    households below the happiness baseline) - the way to judge internet service. traffic: the most jammed busy roads with their worst time of day. road-condition: the most worn roads, busy ones first. coverage-<service>: places where many
     households sit on poorly covered roads. electricity: bottleneck and disconnected lines, then clusters
     of buildings short of power. water / sewage: clusters of buildings short of water / sewage."""
     city = _resolve_city(city)

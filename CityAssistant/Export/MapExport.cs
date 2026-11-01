@@ -207,6 +207,7 @@ namespace CityAssistant.Export
                 var traffic = new float[curves.Length * 7];
                 var coverage = new float[curves.Length * kCoverageServices * 2];
                 var density = new float[curves.Length];
+                var condition = new float[curves.Length];
                 for (int i = 0; i < curves.Length; i++)
                 {
                     var b = curves[i].m_Bezier;
@@ -226,6 +227,16 @@ namespace CityAssistant.Export
                     AddTraffic(em, entities[i], traffic, i);
                     AddCoverage(em, entities[i], coverage, i);
                     density[i] = em.HasComponent<Density>(entities[i]) ? em.GetComponentData<Density>(entities[i]).m_Density : -1f;
+                    // Road panel condition (RoadSection): 100 - average wear / 10 x 100, wear 0..10 at each end.
+                    if (em.HasComponent<NetCondition>(entities[i]))
+                    {
+                        var wear = em.GetComponentData<NetCondition>(entities[i]).m_Wear;
+                        condition[i] = 100f - (wear.x + wear.y) * 0.5f * 10f;
+                    }
+                    else
+                    {
+                        condition[i] = -1f;
+                    }
 
                     streetOfRoad[i] = -1;
                     if (names != null && em.HasComponent<Aggregated>(entities[i]))
@@ -260,6 +271,8 @@ namespace CityAssistant.Export
                     { "coverageLayout", "per road 8 services x 2 float32 (start, end of the road): healthcare, fire & rescue, police, park, post, education, emergency shelter, welfare (game code Game.Net.CoverageService); -1 = no coverage data" },
                     { "density", Base64(density) },
                     { "densityLayout", "per road 1 float32: residents + jobs of the buildings on it per metre of road (Game.Net.Density, NetEdgeDensitySystem); -1 = none" },
+                    { "condition", Base64(condition) },
+                    { "conditionLayout", "per road 1 float32: road condition % as the road's info panel shows it (100 = new, falls with wear from time and heavy traffic; game code RoadSection, NetCondition); -1 = no data" },
                     { "suitability", suitability },
                 };
             }

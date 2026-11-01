@@ -43,12 +43,18 @@ Use `finance.json` summary. "Runway" = cash / monthly deficit.
 
 For any zone type with low demand, name its strongest negative `demandFactors` entry (growth.json) as the reason - it is the game's own explanation.
 
+Added with the 2026-10-31 exports (bands are guesses, not from the game):
+- **Why people leave** (growth.json `moveAway`): whenever people leave, name the biggest reason in `citizensMovedAwayByReason` (NoSuitableProperty = no home they can afford or fits them, NotHappy, NoMoney, NoAdults). Leaving is almost zero above about 30 happiness (game code), so NotHappy points at a happiness problem, NoSuitableProperty and NoMoney at housing and jobs.
+- **Housing** (growth.json `homes`, `zonedBuildings`): **problem** if abandoned + collapsed buildings exceed 2 % of a zone's buildings, or residential `halfwayToAbandonment` above 5 %; **watch** if free homes of a density below 2 % of its homes while that density's demand bar is high (people want to move in but nothing is free), or abandoned buildings exist at all, or `conditionFalling` above 10 % of a zone's buildings. Free homes far above demand (more than 20 % empty) is a different problem: too much zoned for the people who want to come. Homeless with free shelter places = they choose not to use them (leaving soon); without = build shelters or homes.
+
 ## 3. Economy and industry
 | Status | Rule |
 |---|---|
-| problem | unemployment > 15 % in two consecutive months (compare the `00h` snapshots); or a company profitability gauge (economy.json `companies`) below 0 two months in a row |
+| problem | unemployment > 15 % in two consecutive months (compare the `00h` snapshots); or a company profitability gauge (economy.json `companies`) below 0 two months in a row; or in `companiesByProduct` a product with 5+ companies whose `profitPercent` is below 35 (well under breaking even) |
 | watch | unemployment > 8 %; or > 15 % only once / only during fast growth (> 20 % population growth that month); or open positions at one education level above 10 % of its workplaces while unemployment > 8 % (education mismatch) |
 | fine | unemployment <= 8 % |
+
+**Company health** (economy.json `companiesByProduct`, added 2026-10-31; bands guessed): **watch** when a product with 5+ companies has `profitPercent` below 50 (losing money on average), staffing below 70 % of `maxWorkers`, or a `leaveChancePerGameDayPercent` above 20 % (companies of that product will keep leaving). Before proposing any product or zone tax change, read that product's row: above 10 % tax, every point raises the leave chance (finance.md, "Taxes and companies leaving").
 
 ## 4. Public services
 Use services.json, one sub-rating per service; the worst sets the domain status. Also note any service with `budgetPercent` below 100 (efficiency is reduced) or above 100 (paying extra).
@@ -71,7 +77,7 @@ Reserve = (production or capacity - consumption) / consumption.
 | fine | all reserves >= 15 % and everything fulfilled |
 
 ## 6. Road traffic
-traffic.json covers only the city-wide flow chart and parking, not jams at specific junctions (that needs the map layer, Phase 4). Rate **watch** if `parkingAvailability` or `bikeParkingAvailability` is below 0; otherwise report the flow figures informationally and rely on the player for congestion hotspots.
+traffic.json covers the city-wide flow chart, parking, bicycles, accidents now, through traffic and road condition; jams at places come from `map_hotspots("traffic")` and the Traffic jam icons (problems). Rate **watch** if `parkingAvailability` or `bikeParkingAvailability` is below 0, if `roadCondition.segmentsBelow50Percent` is above 10 % of segments (no or too few road maintenance depots), or if `throughTraffic.throughTrafficPercent` is above 30 % (outside traffic crowding city roads; a bypass may help). Rate **problem** if more than 25 % of segments are below 50 % condition. Bands are guesses. `accidents` is a moment, not a rate: mention a spot only when the Traffic accident icons cluster there.
 
 ## 7. Public transport
 transport.json: report per transport type the lines and passengers. **Watch** if a type has lines but almost no passengers (money spent for little use); otherwise informational until the passenger numbers are verified.
